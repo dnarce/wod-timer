@@ -173,7 +173,7 @@ export default function TvApp() {
   const paired = ready && !!state.controller;
   const layout = paired ? tvLayout(state, now) : null;
   const planiOn = layout?.mode === "plani" || layout?.mode === "split";
-  const crop = paired && !!state.planiCrop;
+  const crop = paired && state.planiCrop !== false; // sin elegir (sesiones viejas o nuevas) = ocultas
 
   // La plani puede pedir pantalla completa desde su propio botón. Si pasa a mostrarse un timer,
   // salimos de pantalla completa: si no, el iframe seguiría tapando los timers.

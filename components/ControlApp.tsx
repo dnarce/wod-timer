@@ -475,7 +475,7 @@ export default function ControlApp() {
           <span className="text-[15px] font-semibold text-muted">Barras de la plani</span>
           <div className="flex rounded-full border border-line bg-panel p-1">
             {([false, true] as const).map((crop) => (
-              <button key={String(crop)} type="button" aria-pressed={!!state.planiCrop === crop} onClick={() => commit((s) => ({ ...s, planiCrop: crop }))} className={`h-9 rounded-full px-4 text-sm font-bold ${!!state.planiCrop === crop ? "bg-white text-[#07080B]" : "text-muted"}`}>
+              <button key={String(crop)} type="button" aria-pressed={(state.planiCrop !== false) === crop} onClick={() => commit((s) => ({ ...s, planiCrop: crop }))} className={`h-9 rounded-full px-4 text-sm font-bold ${(state.planiCrop !== false) === crop ? "bg-white text-[#07080B]" : "text-muted"}`}>
                 {crop ? "Ocultar" : "Mostrar"}
               </button>
             ))}

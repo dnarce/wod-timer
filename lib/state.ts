@@ -37,7 +37,7 @@ export type SessionState = {
   closed?: boolean;
   view: ViewMode;
   theme: Theme;
-  /** Recorta las barras de arriba de la plani (semanas y días), como su modo pantalla completa. */
+  /** Recorta las barras de arriba de la plani (semanas y días), como su modo pantalla completa. Sin definir = sí. */
   planiCrop?: boolean;
   timers: TimerState[];
 };
