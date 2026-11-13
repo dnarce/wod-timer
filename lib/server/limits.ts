@@ -11,6 +11,8 @@ export const LIMITS = {
   session: { limit: 30, windowMs: 60 * MIN },
   /** Permisos de conexión a Ably: cada tele/celular pide uno al conectar y al reconectar. */
   token: { limit: 120, windowMs: 10 * MIN },
+  /** La tele de una pantalla fija pide su sesión al abrir. */
+  screen: { limit: 120, windowMs: 10 * MIN },
   /** Intentos FALLIDOS de contraseña de administrador (los aciertos no cuentan). */
   loginFailures: { limit: 5, windowMs: 15 * MIN },
 } as const;

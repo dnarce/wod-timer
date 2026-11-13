@@ -18,13 +18,14 @@ const SIDE_W = 520; // ancho de la columna de timers en modo "plani + timers"
 
 type Session = Creds;
 
-export default function TvApp() {
+export default function TvApp({ screen }: { screen?: string } = {}) {
   const [session, setSession] = useState<Session | null>(null);
   const [state, setState] = useState<SessionState>(emptyState());
   const [now, setNow] = useState(0);
   const [online, setOnline] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showQr, setShowQr] = useState(true); // QR chico en la esquina: 30 s al abrir, o al tocar la pantalla
+  const [screenName, setScreenName] = useState<string | null>(null);
   const stateRef = useRef(state);
   useEffect(() => {
     stateRef.current = state;
@@ -37,6 +38,19 @@ export default function TvApp() {
       await syncClock();
       if (transportKind() === "unconfigured") {
         setError("Falta configurar ABLY_API_KEY en el servidor.");
+        return;
+      }
+      if (screen) {
+        // Pantalla fija (/carrodilla): el servidor siempre da el mismo id y llave. La URL queda limpia.
+        const r = await fetch(`/api/pantalla?nombre=${encodeURIComponent(screen)}`);
+        if (dead) return;
+        if (r.status === 404) {
+          setError("Pantalla no encontrada.");
+          return;
+        }
+        const fixed = (await r.json()) as Session & { name: string };
+        setScreenName(fixed.name);
+        setSession({ id: fixed.id, ctl: fixed.ctl });
         return;
       }
       // Prioridad: sesión del link (#id.llave, el favorito de la tele) > la guardada > una nueva.
@@ -65,7 +79,7 @@ export default function TvApp() {
       dead = true;
       clearInterval(t);
     };
-  }, []);
+  }, [screen]);
 
   // 2) Canal en tiempo real
   useEffect(() => {
@@ -75,6 +89,7 @@ export default function TvApp() {
     let renewing = false;
     // La sesión se cerró (desde /sesiones): pedimos una nueva con el mismo nombre y volvemos al QR.
     const renew = async () => {
+      if (screen) return; // una pantalla fija nunca cambia de sesión
       if (renewing) return;
       renewing = true;
       try {
@@ -93,7 +108,7 @@ export default function TvApp() {
     };
     // El nombre de la tele vive en este navegador (sobrevive a los reinicios de sesión). Se anuncia por presencia
     // para que /sesiones lo muestre, y /sesiones puede cambiarlo con una orden "rename".
-    const name = cleanName(loadLocal<string>(TV_NAME_KEY) ?? sessionLabel(session.id));
+    const name = screen ? cleanName(screenName) : cleanName(loadLocal<string>(TV_NAME_KEY) ?? sessionLabel(session.id));
     connect({
       id: session.id,
       ctl: session.ctl,
@@ -101,18 +116,24 @@ export default function TvApp() {
       onConnection: setOnline,
       presence: { role: "tv", name },
       onRename: (n) => {
+        if (screen) return; // el nombre de una pantalla fija sale de PANTALLAS
         const c = cleanName(n);
         saveLocal(TV_NAME_KEY, c);
         void link?.setPresence({ role: "tv", name: c });
       },
       onState: (s) => {
         if (s.closed) {
+          if (screen) {
+            // Sigue en la misma sesión: sin timers, vuelve al QR. Un celular nuevo la retoma con un estado más nuevo.
+            setState((prev) => (s.rev > prev.rev ? { ...emptyState(), rev: s.rev } : prev));
+            return;
+          }
           void renew();
           return;
         }
         if (s.rev > stateRef.current.rev) {
           setState(s);
-          saveLocal(STATE_KEY, s);
+          if (!screen) saveLocal(STATE_KEY, s);
         }
       },
     })
@@ -122,7 +143,7 @@ export default function TvApp() {
       dead = true;
       link?.close();
     };
-  }, [session]);
+  }, [session, screen, screenName]);
 
   // 3) Tic de 100 ms sobre la hora del servidor
   useEffect(() => {

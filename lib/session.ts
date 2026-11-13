@@ -2,7 +2,7 @@
 
 export type Creds = { id: string; ctl: string };
 
-const HASH_RE = /^#?([a-z0-9-]{8,48})\.([A-Za-z0-9_-]{10,40})$/;
+const HASH_RE = /^#?([a-z0-9_-]{8,48})\.([A-Za-z0-9_-]{10,40})$/;
 
 /** Lee `#<id>.<llave>` (el hash del QR o del link fijo de la tele). */
 export function parseSessionHash(hash: string): Creds | null {

@@ -5,6 +5,8 @@ Timers de gimnasio para la tele, controlados desde el celular del profe.
 - **`/`** — la tele. Muestra un QR hasta que un celular se vincula; después, la planificación del día
   (iframe de [inca-planning](https://incafitnessclub.github.io/inca-planning/)) o los timers (1 a 3).
   Tocar la pantalla (o una tecla del control remoto) muestra u oculta el QR en cualquier modo.
+- **`/<pantalla>`** — link fijo de una tele (ej. `/carrodilla`): siempre la misma sesión, aunque la tele se reinicie o
+  borre sus datos. Las pantallas se definen en la variable `PANTALLAS` (ver *Configuración*).
 - **`/new`** — página de inicio recomendada para el navegador de la tele: crea una sesión limpia y redirige a
   su URL permanente (`/#<sesión>.<llave>`), así un refresco no la pierde. `/new?nombre=Sala 1` le pone nombre.
 - **`/c`** — el celular. Se abre desde el QR (`/c#<sesión>.<llave>`), elegís qué mostrar y manejás hasta 3 timers:
@@ -23,6 +25,14 @@ Celular y tele se sincronizan con `/api/sync`, así que no importa si sus reloje
 
 La llave del QR es un HMAC del id de sesión: el servidor no guarda nada. Todas las conexiones (tele y celular) la
 presentan para pedir permisos a Ably, y la tele sólo puede escuchar.
+
+## Pantallas fijas
+
+- La tele abre `https://<tu-app>/carrodilla` y queda ahí: el servidor le da siempre la misma sesión (`pantalla-carrodilla`,
+  canal `wod:pantalla-carrodilla`) con la llave calculada del id. Un nombre que no está en `PANTALLAS` muestra "Pantalla no encontrada".
+- El celular se vincula escaneando el QR, igual que siempre. "Cerrar sesión" (o cerrar desde `/sesiones`) borra los timers y
+  vuelve al QR **sin cambiar de sesión**. El nombre en `/sesiones` sale de la variable.
+- Quien conozca la URL de la pantalla ve su QR (y por lo tanto puede tomar el control). Si hace falta cortar el acceso, cambiá `SESSION_SECRET`.
 
 ## Sesión de la tele y cambio de profe
 
@@ -44,6 +54,7 @@ Copiá `.env.example` a `.env.local` y completá:
 | --- | --- |
 | `ABLY_API_KEY` | Tiempo real. Obligatoria en Vercel (serverless no sostiene conexiones largas). |
 | `SESSION_SECRET` | Firma las llaves de control. Obligatoria en Vercel. |
+| `PANTALLAS` | Teles con link fijo, separadas por coma: `carrodilla,godoy_cruz-clase` → `/carrodilla`, `/godoy_cruz-clase`. Minúsculas, números, `_` y `-`. Al cambiarla hay que volver a publicar. |
 | `ADMIN_PASSWORD` | Contraseña de `/sesiones`. Sin ella, esa pantalla avisa que falta configurarla. |
 
 > **SDK de Ably:** las cuentas nuevas cobran por MAU y exigen el SDK v3 (`@ably/pubsub-device`).

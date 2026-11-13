@@ -10,7 +10,7 @@ export function sessionSecret(): string {
   return "dev-only-secret";
 }
 
-const ID_RE = /^[a-z0-9-]{8,48}$/;
+const ID_RE = /^[a-z0-9_-]{8,48}$/;
 export const isValidId = (id: string | null): id is string => !!id && ID_RE.test(id);
 
 export function newSessionId(nombre?: string | null): string {
