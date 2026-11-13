@@ -157,6 +157,7 @@ export default function ControlApp() {
       const link = await connect({
         id: creds.id,
         ctl: creds.ctl,
+        role: "control",
         onConnection: setOnline,
         onState: (s) => {
           got = true;

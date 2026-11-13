@@ -11,7 +11,8 @@ export type Link = {
 
 type Opts = {
   id: string;
-  ctl?: string; // sólo el celular
+  ctl: string; // llave de la sesión: la piden todos para conectarse
+  role: "tv" | "control";
   onState: (s: SessionState) => void;
   onConnection: (ok: boolean) => void;
   /** Datos que se anuncian por presencia al conectar (sólo Ably). */
@@ -27,9 +28,9 @@ export async function connect(o: Opts): Promise<Link> {
   return transportKind() === "ably" ? connectAbly(o) : connectDev(o);
 }
 
-async function connectAbly({ id, ctl, onState, onConnection, presence, onRename }: Opts): Promise<Link> {
+async function connectAbly({ id, ctl, role, onState, onConnection, presence, onRename }: Opts): Promise<Link> {
   const { createClient } = await import("@ably/pubsub-device");
-  const q = new URLSearchParams({ id, ...(ctl ? { ctl } : {}) });
+  const q = new URLSearchParams({ id, ctl, role });
   const client = createClient({
     // El navegador nunca ve la API key: pide un JWT firmado a nuestro servidor.
     authCallback: async (_params, callback) => {
@@ -80,7 +81,7 @@ async function connectDev({ id, ctl, onState, onConnection }: Opts): Promise<Lin
   };
   return {
     publish: async (s) => {
-      await fetch(`/api/dev/publish?id=${id}&ctl=${ctl ?? ""}`, { method: "POST", body: JSON.stringify(s) });
+      await fetch(`/api/dev/publish?id=${id}&ctl=${ctl}`, { method: "POST", body: JSON.stringify(s) });
     },
     setPresence: async () => {},
     close: () => es.close(),

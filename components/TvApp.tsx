@@ -92,6 +92,8 @@ export default function TvApp() {
     const name = cleanName(loadLocal<string>(TV_NAME_KEY) ?? sessionLabel(session.id));
     connect({
       id: session.id,
+      ctl: session.ctl,
+      role: "tv",
       onConnection: setOnline,
       presence: { role: "tv", name },
       onRename: (n) => {
