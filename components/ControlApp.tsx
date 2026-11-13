@@ -530,7 +530,7 @@ export default function ControlApp() {
                   </div>
                 </div>
               ) : (
-                <div className="flex flex-1 flex-col gap-2.5 p-3.5">
+                <div className="flex min-w-0 flex-1 flex-col gap-2.5 p-3.5">
                   <div className="flex items-start justify-between">
                     <div className="flex min-w-0 flex-col">
                       <span className={`${cond} text-2xl font-black tracking-[1px]`}>{t.name}</span>
@@ -543,12 +543,12 @@ export default function ControlApp() {
                       <span className={`${cond} text-[13px] font-extrabold tracking-[2px] ${status === "finished" ? "" : "text-muted"}`} style={status === "finished" ? { color: t.color } : undefined}>{{ ready: "LISTO PARA INICIAR", running: "EN CURSO", paused: "EN PAUSA", finished: "✓ TERMINÓ" }[status]}</span>
                     </div>
                   </div>
-                  <div className="flex items-center justify-between gap-1.5">
-                    <label className="flex items-center gap-2 text-sm font-semibold">
+                  <div className="flex flex-wrap items-center justify-between gap-x-1.5 gap-y-2.5">
+                    <label className="flex items-center gap-2 text-sm font-semibold whitespace-nowrap">
                       <input type="checkbox" checked={t.onTv} onChange={() => patch(t.id, (x) => ({ ...x, onTv: !x.onTv }))} className="size-[22px]" style={{ accentColor: t.color }} />
                       En la tele
                     </label>
-                    <div className="flex gap-1.5">
+                    <div className="ml-auto flex gap-1.5">
                       <IconBtn
                         aria={t.muted ? `Activar sonido de ${t.name}` : `Silenciar ${t.name}`}
                         d={t.muted ? "M4 9v6h4l5 4V5L8 9H4zM17 9l5 6M22 9l-5 6" : "M4 9v6h4l5 4V5L8 9H4zM16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"}
