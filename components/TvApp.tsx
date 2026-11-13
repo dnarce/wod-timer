@@ -63,6 +63,13 @@ export default function TvApp({ screen }: { screen?: string } = {}) {
         localStorage.removeItem(STATE_KEY);
       }
       if (!s) {
+        // Con pantallas configuradas, la tele suelta de `/` no crea sesiones: tiene que abrir el link de su pantalla.
+        const cfg = (await (await fetch("/api/pantalla")).json()) as { configured?: boolean };
+        if (dead) return;
+        if (cfg.configured) {
+          setError("Abrí el link de tu pantalla (por ejemplo /carrodilla).");
+          return;
+        }
         const r = await fetch("/api/session", { method: "POST" });
         s = (await r.json()) as Session;
         if (dead) return; // evita crear dos sesiones si el efecto se monta dos veces (modo estricto)

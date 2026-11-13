@@ -7,7 +7,7 @@ export const limiter = (g.__wodLimiter ??= new RateLimiter());
 
 const MIN = 60_000;
 export const LIMITS = {
-  /** Crear sesiones: una tele nueva, /new o el reinicio de una sesión cerrada. */
+  /** Crear sesiones: una tele suelta o el reinicio de una sesión cerrada. */
   session: { limit: 30, windowMs: 60 * MIN },
   /** Permisos de conexión a Ably: cada tele/celular pide uno al conectar y al reconectar. */
   token: { limit: 120, windowMs: 10 * MIN },

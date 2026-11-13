@@ -7,8 +7,6 @@ Timers de gimnasio para la tele, controlados desde el celular del profe.
   Tocar la pantalla (o una tecla del control remoto) muestra u oculta el QR en cualquier modo.
 - **`/<pantalla>`** — link fijo de una tele (ej. `/carrodilla`): siempre la misma sesión, aunque la tele se reinicie o
   borre sus datos. Las pantallas se definen en la variable `PANTALLAS` (ver *Configuración*).
-- **`/new`** — página de inicio recomendada para el navegador de la tele: crea una sesión limpia y redirige a
-  su URL permanente (`/#<sesión>.<llave>`), así un refresco no la pierde. `/new?nombre=Sala 1` le pone nombre.
 - **`/c`** — el celular. Se abre desde el QR (`/c#<sesión>.<llave>`), elegís qué mostrar y manejás hasta 3 timers:
   regresiva, AMRAP/bloques, EMOM, Tabata y For Time. La llave **queda en la URL**: guardar ese link como favorito
   o en la pantalla de inicio recupera el control sin escanear. Si el celular perdió su acceso, se puede pegar el link.
@@ -32,6 +30,7 @@ presentan para pedir permisos a Ably, y la tele sólo puede escuchar.
   canal `wod:pantalla-carrodilla`) con la llave calculada del id. Un nombre que no está en `PANTALLAS` muestra "Pantalla no encontrada".
 - El celular se vincula escaneando el QR, igual que siempre. "Cerrar sesión" (o cerrar desde `/sesiones`) borra los timers y
   vuelve al QR **sin cambiar de sesión**. El nombre en `/sesiones` sale de la variable.
+- Con `PANTALLAS` definida, `/` sin sesión guardada **no crea sesiones**: avisa que hay que abrir el link de la pantalla.
 - Quien conozca la URL de la pantalla ve su QR (y por lo tanto puede tomar el control). Si hace falta cortar el acceso, cambiá `SESSION_SECRET`.
 
 ## Sesión de la tele y cambio de profe
@@ -108,7 +107,7 @@ El motor está en `lib/engine.ts` (funciones puras) y el estado compartido en `l
    Cada tele y cada celular consulta la hora del servidor (`/api/sync`, unos 4 pedidos por minuto), así que 120 por
    minuto alcanzan para unos 20 dispositivos detrás de la misma IP. Subí el número si en tu sede hay más.
    Los contadores de Vercel son por región.
-4. **Probar:** abrí `/new` en la tele, escaneá el QR con el celular y largá un timer. Entrá a `/sesiones` con tu
+4. **Probar:** abrí `/<pantalla>` en la tele, escaneá el QR con el celular y largá un timer. Entrá a `/sesiones` con tu
    contraseña para ver la sesión.
 
 ## Límites y seguridad

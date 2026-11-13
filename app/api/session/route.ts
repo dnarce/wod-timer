@@ -1,7 +1,7 @@
 import { controlKey, newSessionId } from "@/lib/server/keys";
 import { rateLimit } from "@/lib/server/limits";
 
-// La tele pide una sesión nueva (una sola vez, o al abrir /new) y guarda el resultado.
+// La tele pide una sesión nueva (sin `PANTALLAS`, o al reiniciar una sesión cerrada) y guarda el resultado.
 // El `ctl` sólo viaja en el QR. `?nombre=Sala 1` le pone nombre a la sesión (lo ve /sesiones).
 export async function POST(request: Request) {
   const limited = rateLimit(request, "session");
