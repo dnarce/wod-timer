@@ -140,6 +140,7 @@ export const newTimer = (n: number): TimerState => ({
   config: defaultConfig("emom"),
   precount: true,
   onTv: false,
+  muted: n > 0, // sólo el primer timer (CROSSFIT) suena de entrada: así varios timers nuevos no se pisan
   elapsedBase: 0,
   resumedAt: null,
 });
