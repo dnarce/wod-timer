@@ -275,7 +275,7 @@ export default function ControlApp() {
   // "Cerrar sesión": suelta el control, borra los timers y la tele vuelve al QR.
   const releaseSession = async () => {
     const cur = stateRef.current;
-    const next: SessionState = { ...emptyState(), theme: cur.theme, rev: Math.max(cur.rev + 1, Date.now()) };
+    const next: SessionState = { ...emptyState(), theme: cur.theme, planiCrop: cur.planiCrop, rev: Math.max(cur.rev + 1, Date.now()) };
     stateRef.current = next;
     try {
       await linkRef.current?.publish(next);
@@ -467,6 +467,16 @@ export default function ControlApp() {
             {(["dia", "noche"] as const).map((th) => (
               <button key={th} type="button" aria-pressed={state.theme === th} onClick={() => commit((s) => ({ ...s, theme: th }))} className={`h-9 rounded-full px-4 text-sm font-bold ${state.theme === th ? "bg-white text-[#07080B]" : "text-muted"}`}>
                 {th === "dia" ? "Día" : "Noche"}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="flex items-center justify-between px-0.5">
+          <span className="text-[15px] font-semibold text-muted">Barras de la plani</span>
+          <div className="flex rounded-full border border-line bg-panel p-1">
+            {([false, true] as const).map((crop) => (
+              <button key={String(crop)} type="button" aria-pressed={!!state.planiCrop === crop} onClick={() => commit((s) => ({ ...s, planiCrop: crop }))} className={`h-9 rounded-full px-4 text-sm font-bold ${!!state.planiCrop === crop ? "bg-white text-[#07080B]" : "text-muted"}`}>
+                {crop ? "Ocultar" : "Mostrar"}
               </button>
             ))}
           </div>

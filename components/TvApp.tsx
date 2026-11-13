@@ -11,6 +11,9 @@ import { connect, loadLocal, saveLocal } from "@/lib/transport";
 export const PLANI_URL = "https://incafitnessclub.github.io/inca-planning/";
 const SESSION_KEY = "wod:tv:session";
 const STATE_KEY = "wod:tv:state";
+// Alto de las barras de arriba de la plani (semanas + días), medido a 1400 y 1920 de ancho: 94 px.
+// Si cambian el diseño de la plani, hay que ajustar este número.
+const PLANI_BARS_H = 95;
 const SIDE_W = 520; // ancho de la columna de timers en modo "plani + timers"
 
 type Session = Creds;
@@ -170,6 +173,7 @@ export default function TvApp() {
   const paired = ready && !!state.controller;
   const layout = paired ? tvLayout(state, now) : null;
   const planiOn = layout?.mode === "plani" || layout?.mode === "split";
+  const crop = paired && !!state.planiCrop;
 
   // La plani puede pedir pantalla completa desde su propio botón. Si pasa a mostrarse un timer,
   // salimos de pantalla completa: si no, el iframe seguiría tapando los timers.
@@ -192,8 +196,9 @@ export default function TvApp() {
       style={{
         position: "absolute",
         left: 0,
-        top: 0,
-        height: "100%",
+        // "Ocultar barras": el iframe crece hacia arriba y las barras quedan fuera del escenario (que recorta).
+        top: crop ? -PLANI_BARS_H : 0,
+        height: crop ? `calc(100% + ${PLANI_BARS_H}px)` : "100%",
         width: layout?.mode === "split" ? 1920 - SIDE_W : "100%",
         border: 0,
         background: "#fff",
