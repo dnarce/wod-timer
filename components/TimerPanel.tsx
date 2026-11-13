@@ -56,7 +56,9 @@ export function TimerPanel({ t, now, th, size, dark, count = 1, flip = false }: 
   const { v, status, precount, digits, showRound } = useParts(t, now);
   const fin = status === "finished";
   const paused = status === "paused";
-  const digitColor = fin ? "#07080B" : dark ? t.color : th.fg;
+  const resting = v.phase.type === "rest" && !fin;
+  const accent = resting ? th.rest : t.color; // en descanso todo lo "vivo" pasa al color de descanso
+  const digitColor = fin ? "#07080B" : resting ? th.rest : dark ? t.color : th.fg;
   const chip: CSSProperties = { background: fin ? "#07080B" : t.color, color: fin ? t.color : "#07080B", borderRadius: 14, padding: "2px 20px", fontFamily: COND, fontWeight: 900, lineHeight: 1.15, letterSpacing: 1 };
   const panel: CSSProperties = {
     position: "relative",
@@ -97,9 +99,9 @@ export function TimerPanel({ t, now, th, size, dark, count = 1, flip = false }: 
         </div>
         <div style={{ flexGrow: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
           <div style={{ display: "flex", alignItems: "baseline", gap: 28, fontFamily: COND, fontWeight: 800, fontSize: 72, letterSpacing: 10 }}>
-            <span>{precount ? "ARRANCA EN" : v.phase.label}</span>
+            <span style={{ color: resting ? th.rest : undefined }}>{precount ? "ARRANCA EN" : v.phase.label}</span>
             {showRound && (
-              <span style={{ fontWeight: 900, fontSize: 96, color: dark ? t.color : th.fg }}>
+              <span style={{ fontWeight: 900, fontSize: 96, color: resting ? th.rest : dark ? t.color : th.fg }}>
                 {v.phase.index}
                 <span style={{ fontSize: 64, color: th.muted }}>/{v.phase.of}</span>
               </span>
@@ -131,7 +133,7 @@ export function TimerPanel({ t, now, th, size, dark, count = 1, flip = false }: 
           <div style={{ fontFamily: COND, fontWeight: 700, fontSize: sd.mode, letterSpacing: 2 }}>{describe(t.config)}</div>
         </div>
         <div style={{ flexGrow: 1, minHeight: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: sd.gap, padding: "0 24px" }}>
-          <span style={{ fontFamily: COND, fontWeight: 800, fontSize: sd.label, letterSpacing: 6, color: th.muted }}>
+          <span style={{ fontFamily: COND, fontWeight: 800, fontSize: sd.label, letterSpacing: 6, color: resting ? th.rest : th.muted }}>
             {precount ? "ARRANCA EN" : v.phase.label}
             {showRound ? ` ${v.phase.index}/${v.phase.of}` : ""}
             {paused ? " · PAUSA" : ""}
@@ -150,16 +152,16 @@ export function TimerPanel({ t, now, th, size, dark, count = 1, flip = false }: 
   const end = flip ? "flex-end" : "flex-start";
   return (
     <div style={{ ...panel, display: "flex", flexDirection: flip ? "row-reverse" : "row", alignItems: "center", gap: 48, padding: flip ? z.padFlip : z.pad }}>
-      <div style={{ position: "absolute", top: 0, bottom: 0, width: 12, background: t.color, ...(flip ? { right: 0 } : { left: 0 }) }} />
+      <div style={{ position: "absolute", top: 0, bottom: 0, width: 12, background: accent, ...(flip ? { right: 0 } : { left: 0 }) }} />
       <div style={{ flex: `0 0 ${z.left}px`, display: "flex", flexDirection: "column", gap: z.gap, textAlign: flip ? "right" : "left" }}>
         <div style={{ display: "flex", flexDirection: "column", alignItems: end, gap: 8 }}>
           <span style={{ ...chip, fontSize: z.chip }}>{t.name}</span>
           <span style={{ fontFamily: COND, fontWeight: 700, fontSize: z.mode, letterSpacing: 2, color: th.muted }}>{describe(t.config)}</span>
         </div>
         <div style={{ display: "flex", alignItems: "baseline", gap: 16, justifyContent: end }}>
-          <span style={{ fontFamily: COND, fontWeight: 800, fontSize: z.label, letterSpacing: 6 }}>{precount ? "ARRANCA EN" : v.phase.label}</span>
+          <span style={{ fontFamily: COND, fontWeight: 800, fontSize: z.label, letterSpacing: 6, color: resting ? th.rest : undefined }}>{precount ? "ARRANCA EN" : v.phase.label}</span>
           {showRound && (
-            <span style={{ fontFamily: COND, fontWeight: 900, fontSize: z.round, lineHeight: 1, color: dark ? t.color : th.fg }}>
+            <span style={{ fontFamily: COND, fontWeight: 900, fontSize: z.round, lineHeight: 1, color: resting ? th.rest : dark ? t.color : th.fg }}>
               {v.phase.index}
               <span style={{ fontSize: z.roundOf, color: th.muted }}>/{v.phase.of}</span>
             </span>
