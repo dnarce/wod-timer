@@ -160,10 +160,13 @@ export default function ControlApp() {
         role: "control",
         onConnection: setOnline,
         onState: (s) => {
+          const first = !got;
           got = true;
-          // La sesión se cerró (desde /sesiones), o este celular estaba desvinculado y el profe que mandaba
-          // cerró sesión: nos despedimos también.
-          if (s.closed || (s.rev > stateRef.current.rev && controlOf(stateRef.current, deviceRef.current) === "other" && controlOf(s, deviceRef.current) === "free")) {
+          // La sesión se cerró (desde /sesiones) mientras este celular estaba conectado, o este celular estaba
+          // desvinculado y el profe que mandaba cerró sesión: nos despedimos también.
+          // Si el "cerrado" es el último mensaje guardado en el canal (primer estado al conectar), es un cierre
+          // viejo: la sesión está libre y abrir el link la retoma.
+          if ((s.closed && !first) || (s.rev > stateRef.current.rev && controlOf(stateRef.current, deviceRef.current) === "other" && controlOf(s, deviceRef.current) === "free")) {
             dropCreds(creds.id);
             setClosed(true);
             setCreds(null);
@@ -189,7 +192,7 @@ export default function ControlApp() {
           // Escanear el QR toma el control (el celular anterior se desvincula solo).
           // Reabrir el celular sólo lo toma si nadie lo tiene.
           fromScanRef.current = false;
-          commit((s) => ({ ...s, controller: deviceRef.current }));
+          commit((s) => ({ ...s, closed: undefined, controller: deviceRef.current }));
         } else if (ctrl === "me") {
           void link.publish(stateRef.current); // re-sincroniza la tele
         } // si lo tiene otro, no publicamos nada: se muestra la pantalla de "tomó el control"
