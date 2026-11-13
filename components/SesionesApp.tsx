@@ -3,7 +3,7 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from "react"
 import { Brand } from "./TvApp";
 import { Qr } from "./Qr";
 
-type Row = { id: string; name: string; label: string; connections: number; phones: number; tvs: number; controlPath: string };
+type Row = { id: string; name: string; phones: number; tvs: number; controlPath: string };
 type Phase = "loading" | "login" | "ready" | "unconfigured";
 
 const cond = "font-cond";
@@ -19,8 +19,6 @@ export default function SesionesApp() {
   const [bad, setBad] = useState(false);
   const [copied, setCopied] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
-  const [renaming, setRenaming] = useState<string | null>(null); // sesión que se está renombrando
-  const [draft, setDraft] = useState("");
   const busy = useRef(false);
 
   // Una consulta a la vez: Ably sólo permite una enumeración de canales en curso.
@@ -32,12 +30,12 @@ export default function SesionesApp() {
       if (r.status === 401) return setPhase("login");
       if (r.status === 503) return setPhase("unconfigured");
       if (!r.ok) throw new Error(String(r.status));
-      const j = (await r.json()) as { sessions: Row[] };
-      setRows(j.sessions);
+      const j = (await r.json()) as { screens: Row[] };
+      setRows(j.screens);
       setError(null);
       setPhase("ready");
     } catch {
-      setError("No pude leer las sesiones de Ably. Reintento solo en unos segundos.");
+      setError("No pude leer las pantallas de Ably. Reintento solo en unos segundos.");
     } finally {
       busy.current = false;
     }
@@ -81,20 +79,10 @@ export default function SesionesApp() {
     setConfirm(null);
     const r = await fetch("/api/admin/close", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id }) });
     if (!r.ok) return setError("No pude cerrar la sesión. Probá de nuevo.");
-    setRows((rs) => rs.filter((x) => x.id !== id));
     setOpen(null);
-    setNotice("Sesión cerrada. Si había una tele conectada, pidió una sesión nueva con el mismo nombre: aparece en la lista en unos segundos.");
+    setNotice("Sesión cerrada: la tele vuelve al QR y los celulares se desvinculan.");
     setTimeout(() => void load(), 3000);
     setTimeout(() => setNotice(null), 12_000);
-  };
-
-  const rename = async (id: string, name: string) => {
-    const r = await fetch("/api/admin/rename", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, name }) });
-    if (!r.ok) return setError("No pude renombrar la sesión. Probá de nuevo.");
-    const j = (await r.json()) as { name: string };
-    setRows((rs) => rs.map((x) => (x.id === id ? { ...x, name: j.name } : x)));
-    setRenaming(null);
-    setTimeout(() => void load(), 2500); // se confirma con lo que anuncia la tele
   };
 
   const copy = async (id: string, text: string) => {
@@ -151,12 +139,12 @@ export default function SesionesApp() {
       {phase === "ready" && (
         <>
           <div className="flex items-center justify-between gap-3">
-            <h1 className={`${cond} text-[32px] leading-none font-black tracking-[1px]`}>SESIONES ACTIVAS · {rows.length}</h1>
+            <h1 className={`${cond} text-[32px] leading-none font-black tracking-[1px]`}>PANTALLAS</h1>
             <button type="button" onClick={() => void load()} className={`${cond} h-10 rounded-xl border border-line px-4 text-[15px] font-extrabold tracking-[2px]`}>
               ACTUALIZAR
             </button>
           </div>
-          <p className="text-[13px] text-muted">Se muestran las sesiones con alguien conectado ahora; una tele apagada no aparece. Se actualiza sola cada 30 s.</p>
+          <p className="text-[13px] text-muted">Son las pantallas de la variable PANTALLAS. Se actualiza sola cada 30 s.</p>
           {notice && (
             <p role="status" className="rounded-xl border border-line bg-panel p-3 text-[14px] font-semibold">
               {notice}
@@ -167,7 +155,7 @@ export default function SesionesApp() {
               {error}
             </p>
           )}
-          {rows.length === 0 && <p className="rounded-2xl border border-dashed border-line p-6 text-center text-muted">No hay sesiones activas.</p>}
+          {rows.length === 0 && <p className="rounded-2xl border border-dashed border-line p-6 text-center text-muted">No hay pantallas cargadas aún.</p>}
 
           {rows.map((s) => {
             const link = `${location.origin}${s.controlPath}`;
@@ -176,33 +164,17 @@ export default function SesionesApp() {
               <section key={s.id} className="flex flex-col gap-3 rounded-2xl border border-line bg-panel p-4">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="flex min-w-0 flex-col">
-                    <span className={`${cond} text-2xl font-black tracking-[1px] uppercase`}>{s.name || s.label || "Sin nombre"}</span>
-                    <span className="truncate text-[13px] text-muted">{s.id}</span>
+                    <span className={`${cond} text-2xl font-black tracking-[1px] uppercase`}>{s.name}</span>
                   </div>
                   <span className="flex items-center gap-2 text-sm font-semibold">
                     <span className="size-2 rounded-full" style={{ background: s.tvs > 0 ? "#D4FF00" : "#FF6B1A" }} />
-                    {s.tvs} {s.tvs === 1 ? "tele" : "teles"} · {s.phones} {s.phones === 1 ? "celular" : "celulares"}
+                    {s.tvs > 0 ? "Tele conectada" : "Tele apagada"} · {s.phones} {s.phones === 1 ? "celular" : "celulares"}
                   </span>
                 </div>
 
-                {renaming === s.id ? (
-                  <form
-                    onSubmit={(e) => {
-                      e.preventDefault();
-                      void rename(s.id, draft);
-                    }}
-                    className="flex flex-col gap-2 rounded-xl border border-line p-3"
-                  >
-                    <label htmlFor={`name-${s.id}`} className={lbl}>Nombre de la sesión</label>
-                    <input id={`name-${s.id}`} autoFocus maxLength={40} value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="Ej: Sala 1 · Sede Centro" className="h-11 rounded-xl border border-line bg-bg px-3 text-[16px]" />
-                    <div className="flex gap-2">
-                      <button type="button" onClick={() => setRenaming(null)} className="h-11 flex-1 rounded-xl border border-line font-bold">Cancelar</button>
-                      <button type="submit" className={`${cond} h-11 flex-1 rounded-xl bg-volt text-[16px] font-black tracking-[2px] text-[#07080B]`}>GUARDAR</button>
-                    </div>
-                  </form>
-                ) : confirm === s.id ? (
+                {confirm === s.id ? (
                   <div className="flex flex-col gap-2 rounded-xl border border-line p-3">
-                    <span className="text-[15px] font-semibold">¿Cerrar esta sesión? La tele vuelve al QR con una sesión nueva y los celulares se desvinculan. Se pierden los timers.</span>
+                    <span className="text-[15px] font-semibold">¿Cerrar la sesión? La tele vuelve al QR y los celulares se desvinculan. Se pierden los timers.</span>
                     <div className="flex gap-2">
                       <button type="button" onClick={() => setConfirm(null)} className="h-11 flex-1 rounded-xl border border-line font-bold">Cancelar</button>
                       <button type="button" onClick={() => void close(s.id)} className="h-11 flex-1 rounded-xl bg-[#FF3D8B] font-extrabold text-[#07080B]">Cerrar sesión</button>
@@ -212,16 +184,6 @@ export default function SesionesApp() {
                   <div className="flex gap-2">
                     <button type="button" aria-expanded={shown} onClick={() => setOpen(shown ? null : s.id)} className={`${cond} h-11 flex-1 rounded-xl bg-line text-[16px] font-extrabold tracking-[2px]`}>
                       {shown ? "OCULTAR CONTROL" : "CONTROLAR"}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setDraft(s.name || "");
-                        setRenaming(s.id);
-                      }}
-                      className={`${cond} h-11 rounded-xl border border-line px-4 text-[16px] font-extrabold tracking-[2px]`}
-                    >
-                      RENOMBRAR
                     </button>
                     <button type="button" onClick={() => setConfirm(s.id)} className={`${cond} h-11 rounded-xl border border-line px-4 text-[16px] font-extrabold tracking-[2px]`}>
                       CERRAR

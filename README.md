@@ -9,8 +9,8 @@ Timers de gimnasio para la tele, controlados desde el celular del profe.
 - **`/c`** — el celular. Se abre desde el QR (`/c#<sesión>.<llave>`), elegís qué mostrar y manejás hasta 3 timers:
   regresiva, AMRAP/bloques, EMOM, Tabata y For Time. La llave **queda en la URL**: guardar ese link como favorito
   o en la pantalla de inicio recupera el control sin escanear. Si el celular perdió su acceso, se puede pegar el link.
-- **`/sesiones`** — pantalla de recepción (pide `ADMIN_PASSWORD`): lista las sesiones activas, abre el control de
-  cualquiera (QR o link), **renombrarlas** y cerrarlas.
+- **`/sesiones`** — pantalla de recepción (pide `ADMIN_PASSWORD`): lista las pantallas de `PANTALLAS` (con la tele y los
+  celulares conectados), abre el control de cualquiera (QR o link) y cierra su sesión.
 
 ## Cómo funciona
 
@@ -60,7 +60,7 @@ Copiá `.env.example` a `.env.local` y completá:
 > con `lib/server/ably-jwt.ts`, así que no usa ningún SDK de Ably.
 
 En Ably: creá la app y una API key. Los permisos que usa la app son `subscribe`, `publish`, `history` y `presence` sobre
-`wod:*`, más `channel-metadata` sobre `*` (para que `/sesiones` pueda listar las sesiones activas). Después, en
+`wod:*`, más `channel-metadata` sobre `*` (para que `/sesiones` pueda ver quién está conectado). Después, en
 **Settings → Channel rules**, creá una regla con la expresión `wod:*` y **Persist last message** activado: así la tele
 recupera el último estado al reiniciarse aunque el celular esté apagado.
 
@@ -79,14 +79,10 @@ El motor está en `lib/engine.ts` (funciones puras) y el estado compartido en `l
 
 ## Sesiones: qué pasa por dentro
 
-- Una sesión es un id aleatorio (con el nombre adelante si lo tiene) y su canal `wod:<id>` en Ably. El servidor no guarda nada.
-- Nada las borra: Ably no elimina canales ni su último mensaje. Dejan de aparecer en `/sesiones` cuando nadie está conectado.
-- `/sesiones` lista **sólo canales activos** (Ably no enumera los inactivos): una tele apagada no se ve.
-- **El nombre vive en la tele**, no en el id: la tele lo guarda en su navegador y lo anuncia por **presencia** de Ably
-  (`{ role: "tv", name }`); `/sesiones` lo lee de ahí. "Renombrar" manda una orden `rename` a la tele, que lo guarda y
-  actualiza su presencia. Como el nombre es de la tele, sobrevive cuando la sesión se reinicia. Si la tele está apagada
-  la sesión no aparece (Ably no la lista), así que tampoco se puede renombrar.
-- "Cerrar" publica un estado `closed`: la tele pide una sesión nueva (con el mismo nombre) y los celulares se despiden.
+- Cada pantalla es una sesión fija (`pantalla-<nombre>`) con su canal `wod:pantalla-<nombre>` en Ably. El servidor no guarda nada.
+- Ably no elimina canales ni su último mensaje: por eso la tele recupera el último estado al reiniciarse.
+- `/sesiones` muestra **todas** las pantallas de `PANTALLAS`, estén o no conectadas; el estado (tele conectada o apagada, celulares) sale de Ably.
+- "Cerrar" publica un estado `closed`: la tele borra los timers y vuelve al QR (misma sesión) y los celulares se despiden.
 - Si en la regla de canal `wod:*` está tildado **Identification required**, los pedidos REST del servidor se identifican
   con un `clientId` (`lib/server/ably-rest.ts`).
 
