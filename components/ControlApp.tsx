@@ -21,7 +21,8 @@ import {
 import { serverNow, syncClock, transportKind } from "@/lib/clock";
 import { connect, loadLocal, saveLocal, type Link } from "@/lib/transport";
 import { controlOf, findSessionIn, parseSessionHash, sessionHash, type Creds } from "@/lib/session";
-import { useBeeps } from "@/lib/useBeeps";
+import { useBeeps, useTrackAudio } from "@/lib/useBeeps";
+import { unlockTrack } from "@/lib/audioTrack";
 import { beep, unlockAudio } from "@/lib/beep";
 import { Brand } from "./TvApp";
 
@@ -29,6 +30,7 @@ type Screen = { name: "home" } | { name: "edit"; id: string | null } | { name: "
 
 const CRED_KEY = "wod:c:creds";
 const SOUND_KEY = "wod:c:sound"; // beeps en este celular (sí/no)
+const LOCKED_KEY = "wod:c:locked"; // sonido con el celular bloqueado (pista de audio)
 const DEVICE_KEY = "wod:c:device"; // id propio de este celular (para saber quién tiene el control)
 const CLAIM_KEY = "wod:c:claimed"; // sessionStorage: esta pestaña ya tomó el control de esta sesión (recargar no lo retoma)
 const stateKey = (id: string) => `wod:c:state:${id}`;
@@ -63,6 +65,7 @@ export default function ControlApp() {
   const [paste, setPaste] = useState("");
   const [pasteError, setPasteError] = useState(false);
   const [sound, setSound] = useState(() => loadLocal<boolean>(SOUND_KEY) ?? true);
+  const [locked, setLocked] = useState(() => loadLocal<boolean>(LOCKED_KEY) ?? false);
   const deviceRef = useRef("");
   const fromScanRef = useRef(false); // true si entró escaneando el QR: eso toma el control
   const linkRef = useRef<Link | null>(null);
@@ -212,7 +215,9 @@ export default function ControlApp() {
     return () => window.removeEventListener("pointerdown", on);
   }, []);
   // Los beeps suenan acá (junto a la música del profe), no en la tele.
-  useBeeps(state.timers, now, sound && !!creds && controlOf(state, deviceId) !== "other");
+  const soundOn = sound && !!creds && controlOf(state, deviceId) !== "other";
+  const trackActive = useTrackAudio(state.timers, soundOn && locked);
+  useBeeps(state.timers, now, soundOn && !trackActive);
 
   useEffect(() => {
     const t = setInterval(() => setNow(serverNow()), 250);
@@ -419,6 +424,10 @@ export default function ControlApp() {
           <Action onClick={() => patch(t.id, (x, n) => skipPhase(x, n))}>SALTAR TRAMO</Action>
         </div>
         <label className="flex min-h-14 items-center justify-between rounded-2xl border border-line bg-panel px-4 text-[15px] font-semibold">
+          Sonido de este timer
+          <input type="checkbox" checked={!t.muted} onChange={() => patch(t.id, (x) => ({ ...x, muted: !x.muted }))} className="size-[22px]" style={{ accentColor: t.color }} />
+        </label>
+        <label className="flex min-h-14 items-center justify-between rounded-2xl border border-line bg-panel px-4 text-[15px] font-semibold">
           Visible en la tele
           <input type="checkbox" checked={t.onTv} onChange={() => patch(t.id, (x) => ({ ...x, onTv: !x.onTv }))} className="size-[22px]" style={{ accentColor: t.color }} />
         </label>
@@ -521,7 +530,7 @@ export default function ControlApp() {
                   </div>
                 </div>
               ) : (
-                <div className="flex flex-1 flex-col gap-2.5 p-3.5">
+                <div className="flex min-w-0 flex-1 flex-col gap-2.5 p-3.5">
                   <div className="flex items-start justify-between">
                     <div className="flex min-w-0 flex-col">
                       <span className={`${cond} text-2xl font-black tracking-[1px]`}>{t.name}</span>
@@ -534,12 +543,17 @@ export default function ControlApp() {
                       <span className={`${cond} text-[13px] font-extrabold tracking-[2px] ${status === "finished" ? "" : "text-muted"}`} style={status === "finished" ? { color: t.color } : undefined}>{{ ready: "LISTO PARA INICIAR", running: "EN CURSO", paused: "EN PAUSA", finished: "✓ TERMINÓ" }[status]}</span>
                     </div>
                   </div>
-                  <div className="flex items-center justify-between gap-1.5">
-                    <label className="flex items-center gap-2 text-sm font-semibold">
+                  <div className="flex flex-wrap items-center justify-between gap-x-1.5 gap-y-2.5">
+                    <label className="flex items-center gap-2 text-sm font-semibold whitespace-nowrap">
                       <input type="checkbox" checked={t.onTv} onChange={() => patch(t.id, (x) => ({ ...x, onTv: !x.onTv }))} className="size-[22px]" style={{ accentColor: t.color }} />
                       En la tele
                     </label>
-                    <div className="flex gap-1.5">
+                    <div className="ml-auto flex gap-1.5">
+                      <IconBtn
+                        aria={t.muted ? `Activar sonido de ${t.name}` : `Silenciar ${t.name}`}
+                        d={t.muted ? "M4 9v6h4l5 4V5L8 9H4zM17 9l5 6M22 9l-5 6" : "M4 9v6h4l5 4V5L8 9H4zM16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"}
+                        onClick={() => patch(t.id, (x) => ({ ...x, muted: !x.muted }))}
+                      />
                       <IconBtn aria={`Eliminar ${t.name}`} d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3" onClick={() => setConfirm(t.id)} />
                       {status !== "finished" && <IconBtn aria={`Volver ${t.name} a cero`} d="M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5" onClick={() => patch(t.id, (x) => resetTimer(x))} />}
                       <IconBtn aria={`Editar ${t.name}`} d="M4 20h4L19 9l-4-4L4 16v4z" onClick={() => setScreen({ name: "edit", id: t.id })} />
@@ -601,6 +615,22 @@ export default function ControlApp() {
             >
               PROBAR SONIDO
             </button>
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <label className="flex min-h-11 items-center justify-between gap-3 text-[15px] font-semibold">
+              Sonido con el celular bloqueado (prueba)
+              <input
+                type="checkbox"
+                checked={locked}
+                onChange={(e) => {
+                  setLocked(e.target.checked);
+                  saveLocal(LOCKED_KEY, e.target.checked);
+                  if (e.target.checked) unlockTrack();
+                }}
+                className="size-[22px] accent-[#D4FF00]"
+              />
+            </label>
+            <p className="text-[13px] text-muted">Reproduce los beeps como audio, así siguen sonando con la pantalla apagada. Puede cortar la música que esté sonando en el celular.</p>
           </div>
           <LinkField
             id="ctl-link"

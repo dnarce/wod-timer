@@ -25,6 +25,8 @@ export type TimerState = {
   config: TimerConfig;
   precount: boolean;
   onTv: boolean;
+  /** Este timer no hace beeps (los demás siguen sonando). */
+  muted?: boolean;
   elapsedBase: number; // ms acumulados hasta la última pausa
   resumedAt: number | null; // hora del servidor en que arrancó el tramo actual
 };
@@ -138,6 +140,7 @@ export const newTimer = (n: number): TimerState => ({
   config: defaultConfig("emom"),
   precount: true,
   onTv: false,
+  muted: n > 0, // sólo el primer timer (CROSSFIT) suena de entrada: así varios timers nuevos no se pisan
   elapsedBase: 0,
   resumedAt: null,
 });
