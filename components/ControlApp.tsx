@@ -643,7 +643,7 @@ const FIELDS: Record<TimerConfig["kind"], FieldDef[]> = {
   regresiva: [{ key: "totalSec", label: "Minutos", step: 60, min: 60, max: 5400, time: true }],
   amrap: [
     { key: "blockSec", label: "Tiempo por bloque", step: 30, min: 30, max: 3600, time: true },
-    { key: "blocks", label: "Bloques", step: 1, min: 1, max: 10 },
+    { key: "blocks", label: "Bloques", step: 1, min: 1, max: 60 },
     { key: "restSec", label: "Descanso", step: 15, min: 0, max: 600, time: true },
   ],
   emom: [
