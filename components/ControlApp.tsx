@@ -528,7 +528,7 @@ export default function ControlApp() {
                       <span className={`${cond} text-[34px] leading-none font-black tabular-nums`} style={{ color: status === "running" ? t.color : status === "ready" ? "#9CA1AD" : "#fff" }}>
                         {fmt(v.displayMs, !!v.phase.up)}
                       </span>
-                      <span className={`${cond} text-[13px] font-extrabold tracking-[2px] text-muted`}>{{ ready: "A CERO · LISTO", running: "EN CURSO", paused: "EN PAUSA", finished: "TERMINÓ" }[status]}</span>
+                      <span className={`${cond} text-[13px] font-extrabold tracking-[2px] ${status === "finished" ? "" : "text-muted"}`} style={status === "finished" ? { color: t.color } : undefined}>{{ ready: "LISTO PARA INICIAR", running: "EN CURSO", paused: "EN PAUSA", finished: "✓ TERMINÓ" }[status]}</span>
                     </div>
                   </div>
                   <div className="flex items-center justify-between gap-1.5">
@@ -538,11 +538,13 @@ export default function ControlApp() {
                     </label>
                     <div className="flex gap-1.5">
                       <IconBtn aria={`Eliminar ${t.name}`} d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3" onClick={() => setConfirm(t.id)} />
-                      <IconBtn aria={`Volver ${t.name} a cero`} d="M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5" onClick={() => patch(t.id, (x) => resetTimer(x))} />
+                      {status !== "finished" && <IconBtn aria={`Volver ${t.name} a cero`} d="M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5" onClick={() => patch(t.id, (x) => resetTimer(x))} />}
                       <IconBtn aria={`Editar ${t.name}`} d="M4 20h4L19 9l-4-4L4 16v4z" onClick={() => setScreen({ name: "edit", id: t.id })} />
                       <IconBtn aria={`Abrir ${t.name}`} d="M9 6l6 6-6 6" onClick={() => setScreen({ name: "live", id: t.id })} />
-                      <button type="button" aria-label={`${t.resumedAt === null ? "Largar" : "Pausar"} ${t.name}`} onClick={() => toggleRun(t)} className="grid size-11 place-items-center rounded-xl text-[#07080B]" style={{ background: t.color }}>
-                        {t.resumedAt !== null && status !== "finished" ? (
+                      <button type="button" aria-label={status === "finished" ? `Repetir ${t.name}` : `${t.resumedAt === null ? "Largar" : "Pausar"} ${t.name}`} onClick={() => toggleRun(t)} className="grid size-11 place-items-center rounded-xl text-[#07080B]" style={{ background: t.color }}>
+                        {status === "finished" ? (
+                          <Icon d="M21 12a9 9 0 1 1-3-6.7L21 8M21 3v5h-5" size={22} />
+                        ) : t.resumedAt !== null ? (
                           <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="5" width="4" height="14" rx="1" /><rect x="14" y="5" width="4" height="14" rx="1" /></svg>
                         ) : (
                           <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.5v15l12-7.5z" /></svg>
