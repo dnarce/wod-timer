@@ -1,7 +1,7 @@
 // Qué suena y cuándo: función pura, sin audio (la usa la pista de fondo y se prueba aparte).
 import { elapsedOf, phasesOf, type TimerState } from "./state.ts";
 
-export const COUNTDOWN_SEC = 5;
+export const COUNTDOWN_SEC = 3;
 
 /** Cada timer suena con su propia altura (el mismo beep, más agudo o más grave) para distinguirlos con varios en curso. */
 const VOICES = [1, 1.26, 0.79]; // 1.er timer normal, 2.º una tercera más agudo, 3.º más grave
