@@ -25,6 +25,8 @@ export type TimerState = {
   config: TimerConfig;
   precount: boolean;
   onTv: boolean;
+  /** Este timer no hace beeps (los demás siguen sonando). */
+  muted?: boolean;
   elapsedBase: number; // ms acumulados hasta la última pausa
   resumedAt: number | null; // hora del servidor en que arrancó el tramo actual
 };
