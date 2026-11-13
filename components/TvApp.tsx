@@ -11,6 +11,7 @@ import { connect, loadLocal, saveLocal } from "@/lib/transport";
 export const PLANI_URL = "https://incafitnessclub.github.io/inca-planning/";
 const SESSION_KEY = "wod:tv:session";
 const STATE_KEY = "wod:tv:state";
+const SIDE_W = 520; // ancho de la columna de timers en modo "plani + timers"
 
 type Session = Creds;
 
@@ -164,63 +165,110 @@ export default function TvApp() {
   const th = THEMES[state.theme];
   const dark = state.theme === "noche";
   const controlUrl = session && typeof location !== "undefined" ? `${location.origin}/c#${session.id}.${session.ctl}` : "";
-
-  if (error) {
-    return (
-      <Stage theme="noche">
-        <div style={{ height: "100%", display: "grid", placeItems: "center", fontFamily: COND, fontWeight: 800, fontSize: 64, letterSpacing: 3, textAlign: "center", padding: 120 }}>{error}</div>
-      </Stage>
-    );
-  }
-  if (!session || !now) return <Stage theme="noche">{null}</Stage>;
-
-  const layout = tvLayout(state, now);
+  const ready = !error && !!session && !!now;
   // La tele muestra el QR mientras ningún celular tenga el control (al inicio o tras "Cerrar sesión").
-  const paired = !!state.controller;
+  const paired = ready && !!state.controller;
+  const layout = paired ? tvLayout(state, now) : null;
+  const planiOn = layout?.mode === "plani" || layout?.mode === "split";
 
-  // --- Pantalla de vinculación ---
-  if (!paired) {
-    return (
-      <Stage theme="noche">
-        <div style={{ height: 1080, display: "flex", flexDirection: "column" }}>
-          <div style={{ height: 10, background: "#D4FF00" }} />
-          <div style={{ display: "flex", alignItems: "center", padding: "40px 96px 0" }}>
-            <Brand size={56} />
+  // La plani puede pedir pantalla completa desde su propio botón. Si pasa a mostrarse un timer,
+  // salimos de pantalla completa: si no, el iframe seguiría tapando los timers.
+  const fsAllowed = layout?.mode === "plani";
+  useEffect(() => {
+    if (!fsAllowed && document.fullscreenElement?.tagName === "IFRAME") void document.exitFullscreen().catch(() => {});
+  }, [fsAllowed]);
+
+  // La plani se monta UNA sola vez (siempre en el mismo lugar del árbol) y sólo se oculta o se achica.
+  // Así no se vuelve a descargar cada vez que la tapa un timer (tarda ~30 s en traer todo).
+  // Arranca a cargar desde el primer momento, aunque se esté mostrando el QR de vinculación.
+  const planiFrame = (
+    <iframe
+      src={PLANI_URL}
+      title="Planificación del día"
+      allow="fullscreen; screen-wake-lock"
+      allowFullScreen
+      aria-hidden={!planiOn}
+      tabIndex={planiOn ? 0 : -1}
+      style={{
+        position: "absolute",
+        left: 0,
+        top: 0,
+        height: "100%",
+        width: layout?.mode === "split" ? 1920 - SIDE_W : "100%",
+        border: 0,
+        background: "#fff",
+        visibility: planiOn ? "visible" : "hidden",
+        pointerEvents: planiOn ? "auto" : "none",
+      }}
+    />
+  );
+
+  let body;
+  if (error) {
+    body = <div style={{ position: "relative", height: "100%", background: th.bg, display: "grid", placeItems: "center", fontFamily: COND, fontWeight: 800, fontSize: 64, letterSpacing: 3, textAlign: "center", padding: 120 }}>{error}</div>;
+  } else if (!ready) {
+    body = null;
+  } else if (!paired) {
+    // --- Pantalla de vinculación ---
+    body = (
+      <div style={{ position: "relative", height: 1080, display: "flex", flexDirection: "column", background: THEMES.noche.bg }}>
+        <div style={{ height: 10, background: "#D4FF00" }} />
+        <div style={{ display: "flex", alignItems: "center", padding: "40px 96px 0" }}>
+          <Brand size={56} />
+        </div>
+        <div style={{ flexGrow: 1, display: "flex", alignItems: "center", gap: 120, padding: "0 96px" }}>
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 48 }}>
+            <span style={{ alignSelf: "flex-start", display: "inline-flex", alignItems: "center", gap: 14, padding: "10px 22px", borderRadius: 999, background: THEMES.noche.panel, border: `2px solid ${THEMES.noche.line}`, fontFamily: COND, fontWeight: 700, fontSize: 26, letterSpacing: 3, color: THEMES.noche.muted }}>
+              <span style={{ width: 14, height: 14, borderRadius: "50%", background: online ? "#D4FF00" : "#FF6B1A" }} />
+              {online ? "TV LISTA" : "CONECTANDO…"}
+            </span>
+            <h1 style={{ margin: 0, fontFamily: COND, fontWeight: 900, fontSize: 176, lineHeight: 0.86, letterSpacing: -2, textTransform: "uppercase" }}>
+              Escaneá<br />y tomá el<br />
+              <span style={{ color: "#D4FF00" }}>control</span>
+            </h1>
+            <div style={{ display: "flex", gap: 40 }}>
+              {["Abrí la cámara del celu y apuntá al QR", "Elegí qué mostrar: plani o timers", "Armá hasta 3 timers y largalos"].map((s, i) => (
+                <div key={s} style={{ maxWidth: 300, display: "flex", flexDirection: "column", gap: 8 }}>
+                  <span style={{ fontFamily: COND, fontWeight: 900, fontSize: 56, lineHeight: 1, color: "#D4FF00" }}>0{i + 1}</span>
+                  <span style={{ fontSize: 26, fontWeight: 600, lineHeight: 1.25 }}>{s}</span>
+                </div>
+              ))}
+            </div>
           </div>
-          <div style={{ flexGrow: 1, display: "flex", alignItems: "center", gap: 120, padding: "0 96px" }}>
-            <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 48 }}>
-              <span style={{ alignSelf: "flex-start", display: "inline-flex", alignItems: "center", gap: 14, padding: "10px 22px", borderRadius: 999, background: th.panel, border: `2px solid ${th.line}`, fontFamily: COND, fontWeight: 700, fontSize: 26, letterSpacing: 3, color: th.muted }}>
-                <span style={{ width: 14, height: 14, borderRadius: "50%", background: online ? "#D4FF00" : "#FF6B1A" }} />
-                {online ? "TV LISTA" : "CONECTANDO…"}
-              </span>
-              <h1 style={{ margin: 0, fontFamily: COND, fontWeight: 900, fontSize: 176, lineHeight: 0.86, letterSpacing: -2, textTransform: "uppercase" }}>
-                Escaneá<br />y tomá el<br />
-                <span style={{ color: "#D4FF00" }}>control</span>
-              </h1>
-              <div style={{ display: "flex", gap: 40 }}>
-                {["Abrí la cámara del celu y apuntá al QR", "Elegí qué mostrar: plani o timers", "Armá hasta 3 timers y largalos"].map((s, i) => (
-                  <div key={s} style={{ maxWidth: 300, display: "flex", flexDirection: "column", gap: 8 }}>
-                    <span style={{ fontFamily: COND, fontWeight: 900, fontSize: 56, lineHeight: 1, color: "#D4FF00" }}>0{i + 1}</span>
-                    <span style={{ fontSize: 26, fontWeight: 600, lineHeight: 1.25 }}>{s}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-            <div style={{ padding: 36, background: "#fff", borderRadius: 36, border: "10px solid #D4FF00" }}>
-              {controlUrl && <Qr text={controlUrl} size={500} />}
-            </div>
+          <div style={{ padding: 36, background: "#fff", borderRadius: 36, border: "10px solid #D4FF00" }}>
+            {controlUrl && <Qr text={controlUrl} size={500} />}
           </div>
         </div>
-      </Stage>
+      </div>
     );
+  } else if (layout!.mode === "split") {
+    // --- Plani + columna de timers a la derecha (la plani es el iframe de fondo) ---
+    body = (
+      <div style={{ position: "absolute", top: 0, right: 0, bottom: 0, width: SIDE_W, borderLeft: `2px solid ${th.line}`, background: th.panel, display: "grid", gridTemplateRows: `repeat(${layout!.timers.length}, minmax(0, 1fr))` }}>
+        {layout!.timers.map((t, i) => (
+          <div key={t.id} style={{ minHeight: 0, borderTop: i ? `2px solid ${th.line}` : "none" }}>
+            <TimerPanel t={t} now={now} th={th} size="side" dark={dark} count={layout!.timers.length} />
+          </div>
+        ))}
+      </div>
+    );
+  } else if (layout!.mode === "timers") {
+    const n = layout!.timers.length;
+    body = (
+      <div style={{ position: "relative", height: "100%", boxSizing: "border-box", padding: n === 1 ? 0 : 24, display: "grid", gridTemplateRows: `repeat(${n}, minmax(0, 1fr))`, gap: 20 }}>
+        {layout!.timers.map((t, i) => (
+          // Con 2 o 3 timers se alternan: 1 número a la derecha, 2 a la izquierda, 3 a la derecha.
+          <TimerPanel key={t.id} t={t} now={now} th={th} size={n === 1 ? "solo" : n === 2 ? "two" : "three"} dark={dark} flip={i % 2 === 1} />
+        ))}
+      </div>
+    );
+  } else {
+    // --- Plani sola: sólo el iframe ---
+    body = null;
   }
 
-  // --- Plani sola ---
-  const planiFrame = (
-    <iframe src={PLANI_URL} title="Planificación del día" style={{ width: "100%", height: "100%", border: 0, background: "#fff" }} />
-  );
-  const cornerQr = controlUrl && showQr && (
-    <div style={{ position: "absolute", zIndex: 5, right: layout.mode === "split" ? 544 : 24, bottom: 24, display: "flex", alignItems: "center", gap: 14, padding: "10px 18px 10px 10px", borderRadius: 18, background: "rgba(7,8,11,0.88)", color: "#fff" }}>
+  const cornerQr = paired && controlUrl && showQr && (
+    <div style={{ position: "absolute", zIndex: 5, right: layout!.mode === "split" ? SIDE_W + 24 : 24, bottom: 24, display: "flex", alignItems: "center", gap: 14, padding: "10px 18px 10px 10px", borderRadius: 18, background: "rgba(7,8,11,0.88)", color: "#fff" }}>
       <div style={{ background: "#fff", padding: 6, borderRadius: 10 }}>
         <Qr text={controlUrl} size={84} />
       </div>
@@ -231,36 +279,9 @@ export default function TvApp() {
     </div>
   );
 
-  let body;
-  if (layout.mode === "plani") {
-    body = planiFrame;
-  } else if (layout.mode === "split") {
-    body = (
-      <div style={{ display: "flex", height: "100%" }}>
-        <div style={{ position: "relative", flex: 1 }}>{planiFrame}</div>
-        <div style={{ flex: "0 0 520px", borderLeft: `2px solid ${th.line}`, background: th.panel, display: "grid", gridTemplateRows: `repeat(${layout.timers.length}, minmax(0, 1fr))` }}>
-          {layout.timers.map((t, i) => (
-            <div key={t.id} style={{ minHeight: 0, borderTop: i ? `2px solid ${th.line}` : "none" }}>
-              <TimerPanel t={t} now={now} th={th} size="side" dark={dark} count={layout.timers.length} />
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  } else {
-    const n = layout.timers.length;
-    body = (
-      <div style={{ height: "100%", boxSizing: "border-box", padding: n === 1 ? 0 : 24, display: "grid", gridTemplateRows: `repeat(${n}, minmax(0, 1fr))`, gap: 20 }}>
-        {layout.timers.map((t, i) => (
-          // Con 2 o 3 timers se alternan: 1 número a la derecha, 2 a la izquierda, 3 a la derecha.
-          <TimerPanel key={t.id} t={t} now={now} th={th} size={n === 1 ? "solo" : n === 2 ? "two" : "three"} dark={dark} flip={i % 2 === 1} />
-        ))}
-      </div>
-    );
-  }
-
   return (
-    <Stage theme={state.theme}>
+    <Stage theme={paired ? state.theme : "noche"}>
+      {planiFrame}
       {body}
       {cornerQr}
     </Stage>
