@@ -2,11 +2,10 @@
 
 Timers de gimnasio para la tele, controlados desde el celular del profe.
 
-- **`/`** — la tele. Muestra un QR hasta que un celular se vincula; después, la planificación del día
-  (iframe de [inca-planning](https://incafitnessclub.github.io/inca-planning/)) o los timers (1 a 3).
-  Tocar la pantalla (o una tecla del control remoto) muestra u oculta el QR en cualquier modo.
-- **`/<pantalla>`** — link fijo de una tele (ej. `/carrodilla`): siempre la misma sesión, aunque la tele se reinicie o
-  borre sus datos. Las pantallas se definen en la variable `PANTALLAS` (ver *Configuración*).
+- **`/`** — inicio: un botón para elegir la pantalla (las de `PANTALLAS`). No crea sesiones. Sin pantallas dice "No hay pantallas cargadas aún".
+- **`/<pantalla>`** — la tele (ej. `/carrodilla`): siempre la misma sesión, aunque se reinicie o borre sus datos. Muestra un QR hasta que un celular se
+  vincula; después, la planificación del día (iframe de [inca-planning](https://incafitnessclub.github.io/inca-planning/)) o los timers (1 a 3).
+  Tocar la pantalla (o una tecla del control remoto) muestra u oculta el QR en cualquier modo. Las pantallas se definen en la variable `PANTALLAS`.
 - **`/c`** — el celular. Se abre desde el QR (`/c#<sesión>.<llave>`), elegís qué mostrar y manejás hasta 3 timers:
   regresiva, AMRAP/bloques, EMOM, Tabata y For Time. La llave **queda en la URL**: guardar ese link como favorito
   o en la pantalla de inicio recupera el control sin escanear. Si el celular perdió su acceso, se puede pegar el link.
@@ -30,7 +29,7 @@ presentan para pedir permisos a Ably, y la tele sólo puede escuchar.
   canal `wod:pantalla-carrodilla`) con la llave calculada del id. Un nombre que no está en `PANTALLAS` muestra "Pantalla no encontrada".
 - El celular se vincula escaneando el QR, igual que siempre. "Cerrar sesión" (o cerrar desde `/sesiones`) borra los timers y
   vuelve al QR **sin cambiar de sesión**. El nombre en `/sesiones` sale de la variable.
-- Con `PANTALLAS` definida, `/` sin sesión guardada **no crea sesiones**: avisa que hay que abrir el link de la pantalla.
+- Con `PANTALLAS` definida, `/` deja de funcionar como tele (no crea sesiones ni retoma las guardadas o las de un `#…` viejo): avisa que hay que abrir el link de la pantalla.
 - Quien conozca la URL de la pantalla ve su QR (y por lo tanto puede tomar el control). Si hace falta cortar el acceso, cambiá `SESSION_SECRET`.
 
 ## Sesión de la tele y cambio de profe
@@ -116,7 +115,6 @@ La app trae sus propios límites por IP en las rutas públicas (`lib/server/limi
 
 | Ruta | Límite | Para qué |
 | --- | --- | --- |
-| `POST /api/session` | 30 por hora | Evitar que alguien fabrique sesiones en masa. |
 | `GET /api/realtime/token` | 120 cada 10 min | Cada tele/celular pide un permiso al conectar y al reconectar. |
 | `POST /api/admin/login` | 5 intentos **fallidos** cada 15 min | Contra adivinar la contraseña. Pasado el límite se bloquea esa IP, aunque acierte, hasta que venza la ventana. Un acierto limpia el contador. |
 
