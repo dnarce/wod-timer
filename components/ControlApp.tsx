@@ -498,10 +498,16 @@ export default function ControlApp() {
                     </div>
                   </div>
                   <div className="flex flex-wrap items-center justify-between gap-x-1.5 gap-y-2.5">
-                    <label className="flex items-center gap-2 text-sm font-semibold whitespace-nowrap">
-                      <input type="checkbox" checked={t.onTv} onChange={() => patch(t.id, (x) => ({ ...x, onTv: !x.onTv }))} className="size-[22px]" style={{ accentColor: t.color }} />
-                      En la tele
-                    </label>
+                    <button
+                      type="button"
+                      aria-pressed={t.onTv}
+                      onClick={() => patch(t.id, (x) => ({ ...x, onTv: !x.onTv }))}
+                      className={`flex h-11 items-center gap-2 rounded-xl border px-3 text-sm font-bold whitespace-nowrap ${t.onTv ? "" : "border-line text-muted"}`}
+                      style={t.onTv ? { borderColor: t.color, color: t.color } : undefined}
+                    >
+                      <Icon d={t.onTv ? EYE : EYE_OFF} size={20} />
+                      {t.onTv ? "Se ve en la tele" : "Oculto en la tele"}
+                    </button>
                     <div className="ml-auto flex gap-1.5">
                       <IconBtn
                         aria={t.muted ? `Activar sonido de ${t.name}` : `Silenciar ${t.name}`}
@@ -752,6 +758,9 @@ function Pill({ ok, text }: { ok: boolean; text: string }) {
     </span>
   );
 }
+const EYE = "M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12zM12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6z";
+const EYE_OFF = "M3 3l18 18M10.6 6.1A9.6 9.6 0 0 1 12 6c6 0 10 6 10 6a17 17 0 0 1-3.2 3.9M6.6 6.7C3.8 8.4 2 12 2 12s4 7 10 7c1.7 0 3.2-.4 4.5-1M9.9 9.9a3 3 0 0 0 4.2 4.2";
+
 function Icon({ d, size = 22 }: { d: string; size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
