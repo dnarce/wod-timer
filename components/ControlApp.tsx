@@ -22,6 +22,7 @@ import { controlOf, findSessionIn, parseSessionHash, sessionHash, type Creds } f
 import { useBeeps, useTrackAudio } from "@/lib/useBeeps";
 import { unlockTrack } from "@/lib/audioTrack";
 import { beep, unlockAudio } from "@/lib/beep";
+import { SCREEN_PREFIX, screenLabel } from "@/lib/screens";
 import { Brand } from "./TvApp";
 
 type Screen = { name: "home" } | { name: "edit"; id: string | null };
@@ -51,6 +52,8 @@ export default function ControlApp() {
   const [screen, setScreen] = useState<Screen>({ name: "home" });
   const [now, setNow] = useState(0);
   const [online, setOnline] = useState(false);
+  // Nombre de la tele a la que está vinculado este celular (las pantallas fijas llevan su nombre en el id de la sesión).
+  const tvName = creds?.id.startsWith(SCREEN_PREFIX) ? screenLabel(creds.id.slice(SCREEN_PREFIX.length)) : null;
   const [error, setError] = useState<string | null>(null);
   const [undo, setUndo] = useState<{ timer: TimerState; index: number } | null>(null);
   // El aviso de "eliminado" se va solo a los 6 s (se reinicia si se borra otro timer).
@@ -408,7 +411,7 @@ export default function ControlApp() {
     <Shell>
       <div className="flex items-center justify-between">
         <Brand size={26} />
-        <Pill ok={online} text={online ? "TV conectada" : "Sin conexión"} />
+        <Pill ok={online} text={online ? (tvName ?? "TV conectada") : tvName ? `${tvName} · sin conexión` : "Sin conexión"} />
       </div>
 
       <section className="flex flex-col gap-2.5">
@@ -743,9 +746,9 @@ function Shell({ children }: { children: ReactNode }) {
 }
 function Pill({ ok, text }: { ok: boolean; text: string }) {
   return (
-    <span className="flex items-center gap-2 rounded-full border border-line bg-panel px-3 py-1.5 text-[13px] font-semibold whitespace-nowrap">
-      <span className="size-2 rounded-full" style={{ background: ok ? "#D4FF00" : "#FF6B1A" }} />
-      {text}
+    <span className="flex min-w-0 items-center gap-2 rounded-full border border-line bg-panel px-3 py-1.5 text-[13px] font-semibold whitespace-nowrap">
+      <span className="size-2 shrink-0 rounded-full" style={{ background: ok ? "#D4FF00" : "#FF6B1A" }} />
+      <span className="truncate capitalize">{text}</span>
     </span>
   );
 }

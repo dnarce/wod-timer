@@ -14,7 +14,8 @@ export function parseScreens(raw: string | undefined | null): string[] {
 }
 
 /** El id interno de la sesión (y su canal `wod:<id>` en Ably). Lleva prefijo para no mezclarse con las sesiones al azar. */
-export const screenId = (slug: string): string => `pantalla-${slug}`;
+export const SCREEN_PREFIX = "pantalla-";
+export const screenId = (slug: string): string => `${SCREEN_PREFIX}${slug}`;
 
 /** Nombre para mostrar en /sesiones ("godoy_cruz-clase" → "godoy cruz clase"). */
 export const screenLabel = (slug: string): string => slug.replace(/[_-]+/g, " ");
