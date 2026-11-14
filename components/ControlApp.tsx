@@ -22,6 +22,7 @@ import { controlOf, findSessionIn, parseSessionHash, sessionHash, type Creds } f
 import { useBeeps, useTrackAudio } from "@/lib/useBeeps";
 import { unlockTrack } from "@/lib/audioTrack";
 import { beep, unlockAudio } from "@/lib/beep";
+import { Digits } from "./Digits";
 import { SCREEN_PREFIX, screenLabel } from "@/lib/screens";
 import { Brand } from "./TvApp";
 
@@ -487,8 +488,8 @@ export default function ControlApp() {
                         {{ ready: "LISTO", running: "EN CURSO", paused: "EN PAUSA", finished: "✓ TERMINÓ" }[status]}
                       </span>
                     </div>
-                    <span className={`${cond} text-[68px] leading-[0.9] font-black tracking-[-1px] tabular-nums`} style={{ color: running ? t.color : status === "ready" ? "#9CA1AD" : "#fff" }}>
-                      {fmt(v.displayMs, !!v.phase.up)}
+                    <span className={`${cond} text-[68px] leading-[0.9] font-black`} style={{ color: running ? t.color : status === "ready" ? "#9CA1AD" : "#fff" }}>
+                      <Digits text={fmt(v.displayMs, !!v.phase.up)} />
                     </span>
                   </div>
 

@@ -3,6 +3,7 @@ import type { CSSProperties } from "react";
 import { describe, fmt, fmtShort, type Phase } from "@/lib/engine";
 import { statusOf, viewOf, phasesOf, type TimerState } from "@/lib/state";
 import { COND, type ThemeTokens } from "./Stage";
+import { Digits } from "./Digits";
 
 export type PanelSize = "solo" | "two" | "three" | "side";
 
@@ -108,15 +109,15 @@ export function TimerPanel({ t, now, th, size, dark, count = 1, flip = false }: 
               </span>
             )}
           </div>
-          <div style={{ fontFamily: COND, fontWeight: 900, fontSize: digits.length > 5 ? 420 : 600, lineHeight: 0.82, letterSpacing: -8, fontVariantNumeric: "tabular-nums", color: digitColor, marginTop: 12 }}>
-            {digits}
+          <div style={{ fontFamily: COND, fontWeight: 900, fontSize: digits.length > 5 ? 420 : 600, lineHeight: 0.82, color: digitColor, marginTop: 12 }}>
+            <Digits text={digits} />
           </div>
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
           <Segments t={t} now={now} th={th} height={36} />
           <div style={{ display: "flex", justifyContent: "space-between", fontFamily: COND, fontWeight: 700, fontSize: 44, letterSpacing: 2, color: th.muted }}>
             <span>
-              TOTAL <span style={{ color: th.fg, fontVariantNumeric: "tabular-nums" }}>{fmt(Math.max(0, v.totalElapsedMs - pre), true)}</span> / {fmt(v.totalMs - pre, true)}
+              TOTAL <span style={{ color: th.fg }}><Digits text={fmt(Math.max(0, v.totalElapsedMs - pre), true)} /></span> / {fmt(v.totalMs - pre, true)}
             </span>
             <span style={{ color: th.fg }}>{nextText(v.next)}</span>
           </div>
@@ -139,7 +140,7 @@ export function TimerPanel({ t, now, th, size, dark, count = 1, flip = false }: 
             {showRound ? ` ${v.phase.index}/${v.phase.of}` : ""}
             {paused ? " · PAUSA" : ""}
           </span>
-          <span style={{ fontFamily: COND, fontWeight: 900, fontSize: digits.length > 5 ? sd.digits * 0.68 : sd.digits, lineHeight: 0.85, letterSpacing: -4, fontVariantNumeric: "tabular-nums", color: digitColor }}>{digits}</span>
+          <span style={{ fontFamily: COND, fontWeight: 900, fontSize: digits.length > 5 ? sd.digits * 0.68 : sd.digits, lineHeight: 0.85, color: digitColor }}><Digits text={digits} /></span>
           <div style={{ width: "100%", marginTop: sd.gap }}>
             <Segments t={t} now={now} th={th} height={sd.bar} />
           </div>
@@ -173,7 +174,7 @@ export function TimerPanel({ t, now, th, size, dark, count = 1, flip = false }: 
         <span style={{ fontFamily: COND, fontWeight: 700, fontSize: z.next, letterSpacing: 3, color: th.muted }}>{nextText(v.next)}</span>
       </div>
       <div style={{ flex: "1 1 0", minWidth: 0, display: "flex", justifyContent: flip ? "flex-start" : "flex-end", alignItems: "center" }}>
-        <span style={{ fontFamily: COND, fontWeight: 900, fontSize: digits.length > 5 ? z.digits * 0.72 : z.digits, lineHeight: 0.86, letterSpacing: -6, fontVariantNumeric: "tabular-nums", color: digitColor }}>{digits}</span>
+        <span style={{ fontFamily: COND, fontWeight: 900, fontSize: digits.length > 5 ? z.digits * 0.72 : z.digits, lineHeight: 0.86, color: digitColor }}><Digits text={digits} /></span>
       </div>
     </div>
   );
