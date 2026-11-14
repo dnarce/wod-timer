@@ -44,7 +44,7 @@ function dropCreds(id: string) {
 }
 
 const cond = "font-cond";
-const label = `${cond} text-[15px] font-bold tracking-[3px] text-muted uppercase`;
+const label = `${cond} text-[14px] font-bold tracking-[2.5px] text-[#A9AEBA] uppercase`;
 
 export default function ControlApp() {
   const [creds, setCreds] = useState<Creds | null>(null);
@@ -409,53 +409,33 @@ export default function ControlApp() {
   ];
   return (
     <Shell>
-      <div className="flex items-center justify-between">
-        <Brand size={26} />
+      <div className="flex items-center justify-between gap-3">
+        <Brand size={22} />
         <Pill ok={online} text={online ? (tvName ?? "TV conectada") : tvName ? `${tvName} · sin conexión` : "Sin conexión"} />
       </div>
 
       <section className="flex flex-col gap-2.5">
         <h2 className={label}>En la tele</h2>
-        <div className="grid grid-cols-3 gap-2">
+        <div role="group" aria-label="Qué se ve en la tele" className="flex gap-1 rounded-2xl border border-line bg-panel p-1">
           {views.map((v) => {
             const on = state.view === v.id;
             return (
-              <button key={v.id} type="button" aria-pressed={on} onClick={() => setView(v.id)} className={`flex h-[72px] flex-col items-center justify-center gap-1 rounded-2xl border ${on ? "border-volt bg-volt text-[#07080B]" : "border-line bg-panel"}`}>
-                <Icon d={v.d} />
-                <span className={`${cond} text-[17px] font-extrabold tracking-[2px]`}>{v.name}</span>
+              <button key={v.id} type="button" aria-pressed={on} onClick={() => setView(v.id)} className={`${cond} flex h-11 flex-1 items-center justify-center gap-1.5 rounded-xl text-[15px] font-extrabold tracking-[1.5px] ${on ? "bg-white text-[#07080B]" : "text-muted-strong"}`}>
+                <Icon d={v.d} size={17} />
+                {v.name}
               </button>
             );
           })}
         </div>
-        <div className="flex items-center justify-between px-0.5">
-          <span className="text-[15px] font-semibold text-muted">Modo de la tele</span>
-          <div className="flex rounded-full border border-line bg-panel p-1">
-            {(["dia", "noche"] as const).map((th) => (
-              <button key={th} type="button" aria-pressed={state.theme === th} onClick={() => commit((s) => ({ ...s, theme: th }))} className={`h-9 rounded-full px-4 text-sm font-bold ${state.theme === th ? "bg-white text-[#07080B]" : "text-muted"}`}>
-                {th === "dia" ? "Día" : "Noche"}
-              </button>
-            ))}
-          </div>
-        </div>
-        <div className="flex items-center justify-between px-0.5">
-          <span className="text-[15px] font-semibold text-muted">Mostrar menú plani</span>
-          <div className="flex rounded-full border border-line bg-panel p-1">
-            {([false, true] as const).map((crop) => (
-              <button key={String(crop)} type="button" aria-pressed={(state.planiCrop !== false) === crop} onClick={() => commit((s) => ({ ...s, planiCrop: crop }))} className={`h-9 rounded-full px-4 text-sm font-bold ${(state.planiCrop !== false) === crop ? "bg-white text-[#07080B]" : "text-muted"}`}>
-                {crop ? "No" : "Sí"}
-              </button>
-            ))}
-          </div>
-        </div>
       </section>
 
       <section className="flex flex-1 flex-col gap-2.5">
-        <div className="flex items-center justify-between">
+        <div className="flex min-h-6 items-center justify-between">
           <h2 className={label}>Tus timers · {state.timers.length} / {MAX_TIMERS}</h2>
-          {state.timers.length > 0 && (
-            <button type="button" onClick={() => commit((s) => ({ ...s, timers: s.timers.map((t) => ({ ...resetTimer(t), onTv: false })) }))} className={`${cond} flex h-9 items-center gap-1.5 rounded-[10px] border border-line px-3 text-sm font-extrabold tracking-[2px]`}>
-              <Icon d="M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5" size={14} />
-              TODOS A CERO
+          {state.timers.length > 1 && (
+            <button type="button" onClick={() => commit((s) => ({ ...s, timers: s.timers.map((t) => ({ ...resetTimer(t), onTv: false })) }))} className="-my-2.5 -mr-1 flex h-11 items-center gap-1.5 px-1 text-[13px] font-semibold text-muted-strong">
+              <Icon d="M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5" size={15} />
+              Todos a cero
             </button>
           )}
         </div>
@@ -467,16 +447,27 @@ export default function ControlApp() {
           </div>
         )}
 
-        {state.timers.length === 0 && !undo && <p className="rounded-2xl border border-dashed border-line p-5 text-center text-[15px] text-muted">Todavía no hay timers. Armá uno para la clase.</p>}
+        {state.timers.length === 0 && (
+          <div className="flex flex-col gap-4 rounded-[22px] border border-line bg-panel px-[18px] pt-6 pb-[18px]">
+            <div className="flex flex-col gap-1 text-center">
+              <span className={`${cond} text-2xl font-black tracking-[1px]`}>TODAVÍA NO HAY TIMERS</span>
+              <span className="text-sm font-medium text-muted">Armá el primero para la clase.</span>
+            </div>
+            <button type="button" onClick={() => setScreen({ name: "edit", id: null })} className={`${cond} flex h-[60px] items-center justify-center gap-2.5 rounded-2xl bg-volt text-[22px] font-black tracking-[2px] text-[#07080B]`}>
+              <Icon d="M12 5v14M5 12h14" size={21} />
+              NUEVO TIMER
+            </button>
+          </div>
+        )}
 
         {state.timers.map((t) => {
           const status = statusOf(t, now);
           const v = viewOf(t, now);
+          const running = t.resumedAt !== null && status !== "finished";
           return (
-            <div key={t.id} className="flex overflow-hidden rounded-2xl border border-line bg-panel">
-              <div className="w-2" style={{ background: t.color }} />
+            <article key={t.id} className="flex flex-col gap-3 rounded-[22px] border border-line bg-panel px-[18px] pt-4 pb-1.5">
               {confirm === t.id ? (
-                <div className="flex flex-1 flex-col gap-3 p-3.5">
+                <div className="flex flex-col gap-3 pb-3">
                   <span className="text-[15px] font-semibold">¿Eliminar <strong>{t.name}</strong>? Si está en la tele, desaparece.</span>
                   <div className="flex gap-2">
                     <button type="button" onClick={() => setConfirm(null)} className="h-11 flex-1 rounded-xl border border-line font-bold">Cancelar</button>
@@ -484,72 +475,106 @@ export default function ControlApp() {
                   </div>
                 </div>
               ) : (
-                <div className="flex min-w-0 flex-1 flex-col gap-2.5 p-3.5">
-                  <div className="flex items-start justify-between">
-                    <div className="flex min-w-0 flex-col">
-                      <span className={`${cond} text-2xl font-black tracking-[1px]`}>{t.name}</span>
-                      <span className="text-sm font-semibold text-muted">{describe(t.config)}</span>
-                    </div>
-                    <div className="flex flex-col items-end">
-                      <span className={`${cond} text-[34px] leading-none font-black tabular-nums`} style={{ color: status === "running" ? t.color : status === "ready" ? "#9CA1AD" : "#fff" }}>
-                        {fmt(v.displayMs, !!v.phase.up)}
+                <>
+                  <div className="flex items-end justify-between gap-3">
+                    <div className="flex min-w-0 flex-col gap-0.5">
+                      <div className="flex items-center gap-2">
+                        <span className="size-2.5 shrink-0 rounded-full" style={{ background: t.color }} />
+                        <span className={`${cond} truncate text-[22px] font-black tracking-[1px]`}>{t.name}</span>
+                      </div>
+                      <span className="text-[13px] font-semibold text-muted">{describe(t.config)}</span>
+                      <span className={`${cond} mt-1.5 text-[13px] font-extrabold tracking-[2px] ${running || status === "finished" ? "" : "text-muted"}`} style={running || status === "finished" ? { color: t.color } : undefined}>
+                        {{ ready: "LISTO", running: "EN CURSO", paused: "EN PAUSA", finished: "✓ TERMINÓ" }[status]}
                       </span>
-                      <span className={`${cond} text-[13px] font-extrabold tracking-[2px] ${status === "finished" ? "" : "text-muted"}`} style={status === "finished" ? { color: t.color } : undefined}>{{ ready: "LISTO PARA INICIAR", running: "EN CURSO", paused: "EN PAUSA", finished: "✓ TERMINÓ" }[status]}</span>
                     </div>
+                    <span className={`${cond} text-[68px] leading-[0.9] font-black tracking-[-1px] tabular-nums`} style={{ color: running ? t.color : status === "ready" ? "#9CA1AD" : "#fff" }}>
+                      {fmt(v.displayMs, !!v.phase.up)}
+                    </span>
                   </div>
-                  <div className="flex flex-wrap items-center justify-between gap-x-1.5 gap-y-2.5">
+
+                  <div className="flex gap-2">
                     <button
                       type="button"
-                      aria-pressed={t.onTv}
-                      onClick={() => patch(t.id, (x) => ({ ...x, onTv: !x.onTv }))}
-                      className={`flex h-11 items-center gap-2 rounded-xl border px-3 text-sm font-bold whitespace-nowrap ${t.onTv ? "" : "border-line text-muted"}`}
-                      style={t.onTv ? { borderColor: t.color, color: t.color } : undefined}
+                      aria-label={status === "finished" ? `Repetir ${t.name}` : `${t.resumedAt === null ? "Largar" : "Pausar"} ${t.name}`}
+                      onClick={() => toggleRun(t)}
+                      className={`${cond} flex h-14 flex-1 items-center justify-center gap-2.5 rounded-2xl text-[21px] font-black tracking-[2px] text-[#07080B]`}
+                      style={{ background: t.color }}
                     >
-                      <Icon d={t.onTv ? EYE : EYE_OFF} size={20} />
+                      {status === "finished" ? (
+                        <Icon d="M21 12a9 9 0 1 1-3-6.7L21 8M21 3v5h-5" size={21} />
+                      ) : running ? (
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="5" width="4" height="14" rx="1" /><rect x="14" y="5" width="4" height="14" rx="1" /></svg>
+                      ) : (
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.5v15l12-7.5z" /></svg>
+                      )}
+                      {{ ready: "LARGAR", running: "PAUSAR", paused: "SEGUIR", finished: "REPETIR" }[status]}
+                    </button>
+                    {(status === "running" || status === "paused") && (
+                      <button type="button" aria-label={`Volver ${t.name} a cero`} onClick={() => patch(t.id, (x) => resetTimer(x))} className="grid size-14 place-items-center rounded-2xl bg-line">
+                        <Icon d="M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5" size={20} />
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-x-0.5 border-t border-line pt-0.5">
+                    <button type="button" aria-pressed={t.onTv} onClick={() => patch(t.id, (x) => ({ ...x, onTv: !x.onTv }))} className={`flex h-11 items-center gap-1.5 pr-2.5 pl-1.5 text-[13px] font-semibold whitespace-nowrap ${t.onTv ? "text-white" : "text-muted"}`}>
+                      <Icon d={t.onTv ? EYE : EYE_OFF} size={19} />
                       {t.onTv ? "Se ve en la tele" : "Oculto en la tele"}
                     </button>
-                    <div className="ml-auto flex gap-1.5">
-                      <IconBtn
-                        aria={t.muted ? `Activar sonido de ${t.name}` : `Silenciar ${t.name}`}
-                        d={t.muted ? "M4 9v6h4l5 4V5L8 9H4zM17 9l5 6M22 9l-5 6" : "M4 9v6h4l5 4V5L8 9H4zM16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"}
-                        onClick={() => patch(t.id, (x) => ({ ...x, muted: !x.muted }))}
-                      />
-                      <IconBtn aria={`Eliminar ${t.name}`} d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3" onClick={() => setConfirm(t.id)} />
-                      {status !== "finished" && <IconBtn aria={`Volver ${t.name} a cero`} d="M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5" onClick={() => patch(t.id, (x) => resetTimer(x))} />}
-                      <IconBtn aria={`Editar ${t.name}`} d="M4 20h4L19 9l-4-4L4 16v4z" onClick={() => setScreen({ name: "edit", id: t.id })} />
-                      <button type="button" aria-label={status === "finished" ? `Repetir ${t.name}` : `${t.resumedAt === null ? "Largar" : "Pausar"} ${t.name}`} onClick={() => toggleRun(t)} className="grid size-11 place-items-center rounded-xl text-[#07080B]" style={{ background: t.color }}>
-                        {status === "finished" ? (
-                          <Icon d="M21 12a9 9 0 1 1-3-6.7L21 8M21 3v5h-5" size={22} />
-                        ) : t.resumedAt !== null ? (
-                          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="5" width="4" height="14" rx="1" /><rect x="14" y="5" width="4" height="14" rx="1" /></svg>
-                        ) : (
-                          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.5v15l12-7.5z" /></svg>
-                        )}
-                      </button>
-                    </div>
+                    <button type="button" aria-pressed={!t.muted} onClick={() => patch(t.id, (x) => ({ ...x, muted: !x.muted }))} className={`flex h-11 items-center gap-1.5 px-2.5 text-[13px] font-semibold whitespace-nowrap ${t.muted ? "text-muted" : "text-white"}`}>
+                      <Icon d={t.muted ? "M4 9v6h4l5 4V5L8 9H4zM17 9l5 6M22 9l-5 6" : "M4 9v6h4l5 4V5L8 9H4zM16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"} size={19} />
+                      {t.muted ? "Sin sonido" : "Sonido"}
+                    </button>
+                    <span className="flex-1" />
+                    <button type="button" aria-label={`Editar ${t.name}`} onClick={() => setScreen({ name: "edit", id: t.id })} className="grid size-11 place-items-center text-muted">
+                      <Icon d="M4 20h4L19 9l-4-4L4 16v4z" size={19} />
+                    </button>
+                    <button type="button" aria-label={`Eliminar ${t.name}`} onClick={() => setConfirm(t.id)} className="-mr-2 grid size-11 place-items-center text-muted">
+                      <Icon d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3" size={19} />
+                    </button>
                   </div>
-                </div>
+                </>
               )}
-            </div>
+            </article>
           );
         })}
 
-        {state.timers.length < MAX_TIMERS && (
-          <button type="button" onClick={() => setScreen({ name: "edit", id: null })} className={`${cond} flex h-14 items-center justify-center gap-2.5 rounded-2xl bg-volt text-[19px] font-extrabold tracking-[2px] text-[#07080B]`}>
-            <Icon d="M12 5v14M5 12h14" size={22} />
+        {state.timers.length > 0 && state.timers.length < MAX_TIMERS && (
+          <button type="button" onClick={() => setScreen({ name: "edit", id: null })} className={`${cond} flex h-12 items-center justify-center gap-2.5 rounded-2xl border-[1.5px] border-[#3A3F4B] text-[17px] font-extrabold tracking-[2px]`}>
+            <Icon d="M12 5v14M5 12h14" size={19} />
             NUEVO TIMER
           </button>
         )}
       </section>
 
-      <details className="group rounded-2xl border border-line bg-panel">
-        <summary className={`${cond} flex min-h-14 cursor-pointer list-none items-center justify-between px-4 text-[17px] font-extrabold tracking-[2px] [&::-webkit-details-marker]:hidden`}>
-          MÁS OPCIONES
+      <details className="group border-t border-line">
+        <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between px-0.5 text-[15px] font-semibold text-muted-strong [&::-webkit-details-marker]:hidden">
+          Más opciones
           <span className="transition-transform group-open:rotate-180">
             <Icon d="M6 9l6 6 6-6" />
           </span>
         </summary>
-        <div className="flex flex-col gap-3 px-4 pb-4">
+        <div className="flex flex-col gap-3 px-0.5 pt-1 pb-4">
+        <div className="flex items-center justify-between min-h-11">
+          <span className="text-[15px] font-semibold">Modo de la tele</span>
+          <div className="flex rounded-full border border-line bg-panel p-1">
+            {(["dia", "noche"] as const).map((th) => (
+              <button key={th} type="button" aria-pressed={state.theme === th} onClick={() => commit((s) => ({ ...s, theme: th }))} className={`h-9 rounded-full px-4 text-sm font-bold ${state.theme === th ? "bg-white text-[#07080B]" : "text-muted"}`}>
+                {th === "dia" ? "Día" : "Noche"}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="flex items-center justify-between min-h-11">
+          <span className="text-[15px] font-semibold">Mostrar menú plani</span>
+          <div className="flex rounded-full border border-line bg-panel p-1">
+            {([false, true] as const).map((crop) => (
+              <button key={String(crop)} type="button" aria-pressed={(state.planiCrop !== false) === crop} onClick={() => commit((s) => ({ ...s, planiCrop: crop }))} className={`h-9 rounded-full px-4 text-sm font-bold ${(state.planiCrop !== false) === crop ? "bg-white text-[#07080B]" : "text-muted"}`}>
+                {crop ? "No" : "Sí"}
+              </button>
+            ))}
+          </div>
+        </div>
           <div className="flex flex-col gap-1.5">
             <span className="text-[15px] font-semibold">Dónde suenan los beeps</span>
             <div role="group" aria-label="Dónde suenan los beeps" className="flex gap-1 rounded-full border border-line p-1">
@@ -737,9 +762,10 @@ function Editor({ initial, isNew, onSave, onCancel }: { initial: TimerState; isN
 
       <div className="flex-1" />
       <div className="sticky bottom-0 flex gap-2 bg-bg pt-2 pb-4">
-        <button type="button" onClick={() => onSave(d, false)} className={`${cond} h-14 rounded-2xl border border-line bg-panel px-5 text-lg font-extrabold tracking-[2px]`}>GUARDAR</button>
-        <button type="button" onClick={() => onSave(d, true)} className={`${cond} h-14 flex-1 rounded-2xl text-[19px] font-black tracking-[2px] text-[#07080B]`} style={{ background: d.color }}>
-          MANDAR A LA TELE
+        <button type="button" onClick={() => onSave(d, false)} className={`${cond} h-14 rounded-2xl border border-line bg-panel px-4 text-[17px] font-extrabold tracking-[1.5px]`}>GUARDAR</button>
+        <button type="button" onClick={() => onSave(d, true)} className={`${cond} flex h-14 flex-1 items-center justify-center gap-2 rounded-2xl text-[17px] font-black tracking-[1.5px] whitespace-nowrap text-[#07080B]`} style={{ background: d.color }}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.5v15l12-7.5z" /></svg>
+          GUARDAR Y LARGAR
         </button>
       </div>
     </Shell>
@@ -752,7 +778,7 @@ function Shell({ children }: { children: ReactNode }) {
 }
 function Pill({ ok, text }: { ok: boolean; text: string }) {
   return (
-    <span className="flex min-w-0 items-center gap-2 rounded-full border border-line bg-panel px-3 py-1.5 text-[13px] font-semibold whitespace-nowrap">
+    <span className="flex min-w-0 items-center gap-2 text-[13px] font-semibold whitespace-nowrap text-muted-strong">
       <span className="size-2 shrink-0 rounded-full" style={{ background: ok ? "#D4FF00" : "#FF6B1A" }} />
       <span className="truncate capitalize">{text}</span>
     </span>
@@ -766,13 +792,6 @@ function Icon({ d, size = 22 }: { d: string; size?: number }) {
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       <path d={d} />
     </svg>
-  );
-}
-function IconBtn({ aria, d, onClick }: { aria: string; d: string; onClick: () => void }) {
-  return (
-    <button type="button" aria-label={aria} onClick={onClick} className="grid size-11 place-items-center rounded-xl bg-line">
-      <Icon d={d} size={18} />
-    </button>
   );
 }
 

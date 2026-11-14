@@ -13,7 +13,7 @@ const Z = {
 
 // Columna del split: se achica según cuántos timers se apilan (1, 2 o 3).
 const SIDE = {
-  1: { pad: "28px 36px", name: 60, mode: 30, label: 40, digits: 220, bar: 22, next: 28, fin: 200, gap: 14 },
+  1: { pad: "28px 36px", name: 60, mode: 30, label: 40, digits: 220, bar: 22, next: 28, fin: 240, gap: 14 },
   2: { pad: "16px 28px", name: 44, mode: 22, label: 28, digits: 170, bar: 16, next: 22, fin: 140, gap: 8 },
   3: { pad: "10px 24px", name: 34, mode: 18, label: 22, digits: 120, bar: 12, next: 18, fin: 100, gap: 4 },
 } as const;
@@ -74,7 +74,8 @@ export function TimerPanel({ t, now, th, size, dark, count = 1, flip = false }: 
     const sd = SIDE[Math.min(3, Math.max(1, count)) as 1 | 2 | 3];
     const big = size === "three" ? 300 : size === "side" ? sd.fin : size === "two" ? 440 : 520;
     return (
-      <div style={{ ...panel, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8 }}>
+      // En la columna del split el panel llena todo el alto que le toca (como cuando corre), sin bordes redondeados.
+      <div style={{ ...panel, ...(size === "side" ? { borderRadius: 0, border: "none", height: "100%" } : {}), display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8 }}>
         <span style={{ fontFamily: COND, fontWeight: 800, fontSize: size === "three" ? 36 : size === "side" ? Math.min(52, sd.name) : 52, letterSpacing: 6 }}>{t.name}</span>
         <span style={{ fontFamily: COND, fontWeight: 900, fontSize: big, lineHeight: 0.85, letterSpacing: -6 }}>FIN</span>
       </div>

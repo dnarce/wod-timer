@@ -6,6 +6,7 @@
   --line: #23262f;
   --fg: #ffffff;
   --muted: #9ca1ad;
+  --muted-strong: #c3c7d1; /* títulos de sección: más claro que el texto secundario */
   --volt: #d4ff00;
 }
 
@@ -15,6 +16,7 @@
   --color-line: var(--line);
   --color-fg: var(--fg);
   --color-muted: var(--muted);
+  --color-muted-strong: var(--muted-strong);
   --color-volt: var(--volt);
   --font-sans: var(--font-saira), system-ui, sans-serif;
   --font-cond: var(--font-saira-cond), "Arial Narrow", sans-serif;
