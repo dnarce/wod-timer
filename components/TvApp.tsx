@@ -7,6 +7,8 @@ import { emptyState, tvLayout, type SessionState } from "@/lib/state";
 import { cleanName, type Creds } from "@/lib/session";
 import { serverNow, syncClock, transportKind } from "@/lib/clock";
 import { connect } from "@/lib/transport";
+import { audioReady, unlockAudio } from "@/lib/beep";
+import { useBeeps } from "@/lib/useBeeps";
 
 export const PLANI_URL = "https://incafitnessclub.github.io/inca-planning/";
 // Alto de las barras de arriba de la plani (semanas + días), medido a 1400 y 1920 de ancho: 94 px.
@@ -103,9 +105,13 @@ export default function TvApp({ screen }: { screen: string }) {
 
   // 4) Tocar la pantalla (o una tecla del control remoto) muestra u oculta el QR de la esquina, en cualquier modo:
   //    así se puede volver a vincular un celular aunque haya timers a pantalla completa.
-  //    La tele no emite sonido: los beeps suenan en el celular del profe, junto a su música.
+  //    El mismo toque habilita el sonido: los navegadores no dejan sonar hasta que alguien toca algo.
   useEffect(() => {
-    const on = () => setShowQr((v) => !v);
+    unlockAudio(); // en teles en modo kiosco alcanza con esto; en el resto hace falta el toque
+    const on = () => {
+      unlockAudio();
+      setShowQr((v) => !v);
+    };
     window.addEventListener("pointerdown", on);
     window.addEventListener("keydown", on);
     return () => {
@@ -128,6 +134,10 @@ export default function TvApp({ screen }: { screen: string }) {
       void lock?.release();
     };
   }, []);
+
+  // Beeps en la tele: suenan acá salvo que el profe elija "En este celular" en el control.
+  const tvSound = state.tvSound !== false && !!state.controller;
+  useBeeps(state.timers, now, tvSound);
 
   const th = THEMES[state.theme];
   const dark = state.theme === "noche";
@@ -248,11 +258,19 @@ export default function TvApp({ screen }: { screen: string }) {
     </div>
   );
 
+  // El sonido está pedido pero el navegador todavía no lo habilitó: falta un toque en la tele.
+  const soundHint = paired && tvSound && !audioReady() && (
+    <div style={{ position: "absolute", zIndex: 6, left: 24, bottom: 24, padding: "14px 22px", borderRadius: 18, background: "#D4FF00", color: "#07080B", fontFamily: COND, fontWeight: 800, fontSize: 28, letterSpacing: 1 }}>
+      SONIDO APAGADO · tocá OK en el control remoto de la tele para activarlo
+    </div>
+  );
+
   return (
     <Stage theme={paired ? state.theme : "noche"}>
       {planiFrame}
       {body}
       {cornerQr}
+      {soundHint}
     </Stage>
   );
 }

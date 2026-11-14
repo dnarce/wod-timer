@@ -1,48 +1,68 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { beep } from "./beep";
+import { beep, cancelBeeps, keepAudioAlive } from "./beep";
 import { serverNow } from "./clock";
 import { playTrack, stopTrack } from "./audioTrack";
-import { COUNTDOWN_SEC, soundEvents, voiceRate } from "./soundEvents";
+import { COUNTDOWN_SEC, soundEvents } from "./soundEvents";
 import { viewOf, type TimerState } from "./state";
 
 /**
- * Beeps de los timers en curso: los últimos 5 s de cada tramo (precuenta, trabajo y descanso), el arranque de cada tramo y el fin.
- * Suena en el celular del profe (junto a su música); la tele no emite sonido.
+ * Beeps de los timers en curso: 3 s antes de cada cambio de tramo (precuenta, trabajo, descanso) y del final arranca el
+ * sonido (3 beeps cortos + uno largo que cae justo en el cambio). En un cronómetro hacia arriba suena sólo el largo, al final.
+ * Suena en la tele o en el celular del profe, según elija en el control (nunca en los dos).
  */
 export function useBeeps(timers: TimerState[], now: number, enabled: boolean) {
-  const beeped = useRef(new Map<string, string>());
+  const counted = useRef(new Map<string, number>()); // timer -> último tramo cuya cuenta ya arrancó
   const lastPhase = useRef(new Map<string, number>());
+  const ended = useRef(new Set<string>());
+
+  // Mientras haya un timer sonando en curso, la salida de audio no se duerme entre beeps.
+  const running = enabled && timers.some((t) => t.resumedAt !== null && !t.muted);
+  useEffect(() => {
+    keepAudioAlive(running);
+    return () => keepAudioAlive(false);
+  }, [running]);
+
+  useEffect(() => {
+    if (!enabled) cancelBeeps();
+  }, [enabled]);
 
   useEffect(() => {
     if (!enabled || !now) return;
-    for (const [n, t] of timers.entries()) {
-      const rate = voiceRate(n);
+    for (const t of timers) {
+      if (t.muted) {
+        cancelBeeps(t.id);
+        continue;
+      }
       const v = viewOf(t, now);
-      if (t.muted) continue; // timer silenciado
       if (v.finished) {
-        if (beeped.current.get(t.id) !== "end") {
-          // Sólo suena si terminó hace instantes (no al abrir la página con un timer ya terminado).
-          if (t.elapsedBase > 0 || t.resumedAt !== null) {
-            if (v.finishedForMs < 3000) beep("end", rate);
-          }
-          beeped.current.set(t.id, "end");
+        if (!ended.current.has(t.id)) {
+          ended.current.add(t.id);
+          // Sólo suena si terminó hace instantes (no al abrir la página con un timer ya terminado) y si la cuenta no sonó ya.
+          const started = t.elapsedBase > 0 || t.resumedAt !== null;
+          if (started && v.finishedForMs < 3000 && counted.current.get(t.id) !== v.phaseIndex) beep(COUNTDOWN_SEC, t.id);
         }
         continue;
       }
-      if (t.resumedAt === null) continue; // en pausa o a cero: no suena
-      const prev = lastPhase.current.get(t.id);
-      if (prev !== undefined && prev !== v.phaseIndex) beep("go", rate);
-      lastPhase.current.set(t.id, v.phaseIndex);
-      // Cuenta de 5 s al final de cada tramo con cuenta regresiva (cuenta previa, trabajo, descanso).
-      // En un tramo de 5 s o menos no suena el segundo en que arranca: ahí ya suena la largada.
-      if (!v.phase.up && v.secLeftInPhase >= 1 && v.secLeftInPhase <= COUNTDOWN_SEC && v.secLeftInPhase < v.phase.durSec) {
-        const k = `${v.phaseIndex}:${v.secLeftInPhase}`;
-        if (beeped.current.get(t.id) !== k) {
-          beeped.current.set(t.id, k);
-          beep("tick", rate);
-        }
+      ended.current.delete(t.id);
+      if (t.resumedAt === null) {
+        // En pausa o a cero: se corta lo que esté sonando y, al seguir, la cuenta se retoma desde donde va.
+        cancelBeeps(t.id);
+        counted.current.delete(t.id);
+        lastPhase.current.delete(t.id);
+        continue;
       }
+      const prev = lastPhase.current.get(t.id);
+      lastPhase.current.set(t.id, v.phaseIndex);
+      // Cambió de tramo sin que la cuenta haya sonado (la pantalla estuvo bloqueada): suena al menos el beep largo.
+      if (prev !== undefined && prev !== v.phaseIndex && counted.current.get(t.id) !== prev) beep(COUNTDOWN_SEC, t.id);
+      // Cuenta de 3 s al final de cada tramo con cuenta regresiva: el sonido entra por el segundo que corresponde.
+      const leftMs = v.phase.durSec * 1000 - v.phaseElapsedMs;
+      if (!v.phase.up && leftMs > 0 && leftMs <= COUNTDOWN_SEC * 1000 && counted.current.get(t.id) !== v.phaseIndex) {
+        counted.current.set(t.id, v.phaseIndex);
+        beep(COUNTDOWN_SEC - leftMs / 1000, t.id);
+      }
+      // Cronómetro hacia arriba: no hay cuenta, así que el beep largo suena al cambiar de tramo (ver arriba) y al terminar.
     }
   }, [timers, now, enabled]);
 }

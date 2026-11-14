@@ -2,7 +2,7 @@
 // Audio con el celular bloqueado: se arma UNA pista de audio con todos los beeps de los timers en curso
 // (ticks de los últimos 5 s, largadas y final, cada uno en su segundo exacto) y se reproduce en un <audio>.
 // Un <audio> sigue sonando con la pantalla bloqueada (WebAudio y los timers de JS, no).
-import { soundBuffer } from "./beep";
+import { setAudioSession, soundBuffer } from "./beep";
 import type { SoundEvent } from "./soundEvents";
 
 const RATE = 16_000; // mono 16 bit: alcanza para beeps de 1 kHz y mantiene chica la pista
@@ -29,8 +29,8 @@ function wavHeader(samples: number): ArrayBuffer {
 }
 
 async function render(events: SoundEvent[], seconds: number): Promise<Blob | null> {
-  const [tick, go] = await Promise.all([soundBuffer("tick"), soundBuffer("go")]);
-  if (!tick || !go) return null;
+  const buf = await soundBuffer();
+  if (!buf) return null;
   const OAC = window.OfflineAudioContext ?? (window as unknown as { webkitOfflineAudioContext: typeof OfflineAudioContext }).webkitOfflineAudioContext;
   const total = Math.ceil(seconds * RATE);
   const parts: BlobPart[] = [wavHeader(total)];
@@ -39,14 +39,12 @@ async function render(events: SoundEvent[], seconds: number): Promise<Blob | nul
     const t0 = c0 / RATE;
     const ctx = new OAC(1, n, RATE);
     for (const e of events) {
-      const buf = e.kind === "tick" ? tick : go;
       const at = e.atMs / 1000;
-      if (at >= t0 + n / RATE || at + buf.duration / e.rate <= t0) continue;
+      if (at >= t0 + n / RATE || at + (buf.duration - e.skipSec) <= t0) continue;
       const src = ctx.createBufferSource();
       src.buffer = buf;
-      src.playbackRate.value = e.rate; // altura propia de cada timer
       src.connect(ctx.destination);
-      src.start(Math.max(0, at - t0), Math.max(0, t0 - at) * e.rate);
+      src.start(Math.max(0, at - t0), e.skipSec + Math.max(0, t0 - at));
     }
     const data = (await ctx.startRendering()).getChannelData(0);
     const pcm = new Int16Array(n);
@@ -89,6 +87,7 @@ export function stopTrack() {
     el.load();
   }
   if ("mediaSession" in navigator) navigator.mediaSession.playbackState = "none";
+  setAudioSession("ambient"); // sin pista, los beeps vuelven a mezclarse con la música
 }
 
 /**
@@ -98,7 +97,7 @@ export function stopTrack() {
 export async function playTrack(events: SoundEvent[], t0: number, now: () => number, cancelled: () => boolean, onEnded: () => void): Promise<boolean> {
   try {
     const last = events[events.length - 1].atMs / 1000;
-    const blob = await render(events, Math.min(MAX_SEC, last + 1));
+    const blob = await render(events, Math.min(MAX_SEC, last + 5)); // el sonido dura 4 s desde que arranca
     if (!blob || cancelled()) return false;
     const a = element();
     if (drift) clearInterval(drift);
@@ -106,6 +105,7 @@ export async function playTrack(events: SoundEvent[], t0: number, now: () => num
     url = URL.createObjectURL(blob);
     a.onended = onEnded;
     a.src = url;
+    setAudioSession("playback"); // para seguir sonando con la pantalla bloqueada (corta la música de otras apps)
     await a.play();
     // El arranque tarda un poco: se salta al segundo que corresponde ahora.
     const at = () => (now() - t0) / 1000;

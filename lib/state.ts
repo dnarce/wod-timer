@@ -41,6 +41,8 @@ export type SessionState = {
   theme: Theme;
   /** Recorta las barras de arriba de la plani (semanas y días), como su modo pantalla completa. Sin definir = sí. */
   planiCrop?: boolean;
+  /** Dónde suenan los beeps: en la tele (true) o en el celular del profe (false), nunca en los dos. Sin definir = en la tele. */
+  tvSound?: boolean;
   timers: TimerState[];
 };
 

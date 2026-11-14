@@ -7,10 +7,8 @@ import {
   defaultConfig,
   emptyState,
   newTimer,
-  nudgeTimer,
   pauseTimer,
   resetTimer,
-  skipPhase,
   startTimer,
   statusOf,
   viewOf,
@@ -26,10 +24,9 @@ import { unlockTrack } from "@/lib/audioTrack";
 import { beep, unlockAudio } from "@/lib/beep";
 import { Brand } from "./TvApp";
 
-type Screen = { name: "home" } | { name: "edit"; id: string | null } | { name: "live"; id: string };
+type Screen = { name: "home" } | { name: "edit"; id: string | null };
 
 const CRED_KEY = "wod:c:creds";
-const SOUND_KEY = "wod:c:sound"; // beeps en este celular (sí/no)
 const LOCKED_KEY = "wod:c:locked"; // sonido con el celular bloqueado (pista de audio)
 const DEVICE_KEY = "wod:c:device"; // id propio de este celular (para saber quién tiene el control)
 const CLAIM_KEY = "wod:c:claimed"; // sessionStorage: esta pestaña ya tomó el control de esta sesión (recargar no lo retoma)
@@ -56,6 +53,12 @@ export default function ControlApp() {
   const [online, setOnline] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [undo, setUndo] = useState<{ timer: TimerState; index: number } | null>(null);
+  // El aviso de "eliminado" se va solo a los 6 s (se reinicia si se borra otro timer).
+  useEffect(() => {
+    if (!undo) return;
+    const t = setTimeout(() => setUndo(null), 6000);
+    return () => clearTimeout(t);
+  }, [undo]);
   const [confirm, setConfirm] = useState<string | null>(null);
   const [deviceId, setDeviceId] = useState("");
   const [closed, setClosed] = useState(false);
@@ -64,7 +67,6 @@ export default function ControlApp() {
   const [unlinked, setUnlinked] = useState(false); // sin sesión guardada ni link
   const [paste, setPaste] = useState("");
   const [pasteError, setPasteError] = useState(false);
-  const [sound, setSound] = useState(() => loadLocal<boolean>(SOUND_KEY) ?? true);
   const [locked, setLocked] = useState(() => loadLocal<boolean>(LOCKED_KEY) ?? false);
   const deviceRef = useRef("");
   const fromScanRef = useRef(false); // true si entró escaneando el QR: eso toma el control
@@ -214,10 +216,36 @@ export default function ControlApp() {
     window.addEventListener("pointerdown", on);
     return () => window.removeEventListener("pointerdown", on);
   }, []);
-  // Los beeps suenan acá (junto a la música del profe), no en la tele.
-  const soundOn = sound && !!creds && controlOf(state, deviceId) !== "other";
+  // Los beeps suenan acá (junto a la música del profe) y, si se prende "Sonido en la tele", también en la tele.
+  // Los beeps suenan en la tele (por defecto) o en este celular, nunca en los dos.
+  const tvSound = state.tvSound !== false;
+  const soundOn = !tvSound && !!creds && controlOf(state, deviceId) !== "other";
   const trackActive = useTrackAudio(state.timers, soundOn && locked);
   useBeeps(state.timers, now, soundOn && !trackActive);
+  // Con un timer corriendo la pantalla queda prendida: los beeps que se mezclan con la música no suenan con el celular bloqueado.
+  const keepAwake = soundOn && state.timers.some((t) => t.resumedAt !== null);
+  useEffect(() => {
+    if (!keepAwake) return;
+    let dead = false;
+    let lock: { release: () => Promise<void> } | null = null;
+    const ask = () => {
+      if (document.visibilityState !== "visible") return;
+      const wl = (navigator as unknown as { wakeLock?: { request: (t: "screen") => Promise<{ release: () => Promise<void> }> } }).wakeLock;
+      wl?.request("screen")
+        .then((l) => {
+          if (dead) void l.release();
+          else lock = l;
+        })
+        .catch(() => {});
+    };
+    ask();
+    document.addEventListener("visibilitychange", ask);
+    return () => {
+      dead = true;
+      document.removeEventListener("visibilitychange", ask);
+      void lock?.release();
+    };
+  }, [keepAwake]);
 
   useEffect(() => {
     const t = setInterval(() => setNow(serverNow()), 250);
@@ -283,7 +311,7 @@ export default function ControlApp() {
   // "Cerrar sesión": suelta el control, borra los timers y la tele vuelve al QR.
   const releaseSession = async () => {
     const cur = stateRef.current;
-    const next: SessionState = { ...emptyState(), theme: cur.theme, planiCrop: cur.planiCrop, rev: Math.max(cur.rev + 1, Date.now()) };
+    const next: SessionState = { ...emptyState(), theme: cur.theme, planiCrop: cur.planiCrop, tvSound: cur.tvSound, rev: Math.max(cur.rev + 1, Date.now()) };
     stateRef.current = next;
     try {
       await linkRef.current?.publish(next);
@@ -364,86 +392,9 @@ export default function ControlApp() {
             if (!launch) return { ...s, timers };
             return { ...s, view: s.view === "plani" ? "timers" : s.view, timers: timers.map((x) => (x.id === t.id ? startTimer(x, n) : x)) };
           });
-          setScreen(launch ? { name: "live", id: t.id } : { name: "home" });
+          setScreen({ name: "home" });
         }}
       />
-    );
-  }
-
-  // ---------- Timer en vivo ----------
-  if (screen.name === "live") {
-    const t = timerById(screen.id);
-    if (!t) {
-      setScreen({ name: "home" });
-      return null;
-    }
-    const v = viewOf(t, now);
-    const status = statusOf(t, now);
-    return (
-      <Shell>
-        <div className="flex items-center justify-between">
-          <button type="button" aria-label="Volver" onClick={() => setScreen({ name: "home" })} className="-ml-3 grid size-11 place-items-center">
-            <Icon d="M15 6l-6 6 6 6" />
-          </button>
-          <Pill ok={online} text={t.onTv ? "En vivo en la tele" : "Fuera de la tele"} />
-        </div>
-        <div className="rounded-3xl p-5 text-[#07080B]" style={{ background: t.color }}>
-          <div className="flex items-baseline justify-between">
-            <span className={`${cond} text-[30px] font-black`}>{t.name}</span>
-            <span className={`${cond} text-lg font-extrabold tracking-[2px]`}>
-              {status === "finished" ? "FIN" : v.phase.type === "precount" ? "ARRANCA EN" : v.phase.of > 1 ? `${v.phase.label} ${v.phase.index}/${v.phase.of}` : v.phase.label}
-            </span>
-          </div>
-          <div className={`${cond} text-[112px] font-black leading-[0.9] tracking-[-2px] tabular-nums`}>{fmt(v.displayMs, !!v.phase.up)}</div>
-          <div className="mt-2 flex gap-1" style={{ height: 10 }}>
-            {buildPhases(t.config, t.precount).map((p, i) =>
-              p.type === "precount" ? null : (
-                <div key={i} className="overflow-hidden rounded" style={{ flex: `${p.durSec} 1 0`, background: "rgba(7,8,11,0.2)" }}>
-                  <div className="h-full" style={{ width: `${v.progress[i] * 100}%`, background: p.type === "rest" ? "rgba(7,8,11,0.55)" : "#07080B" }} />
-                </div>
-              ),
-            )}
-          </div>
-          <p className="mt-2 text-sm font-bold">{describe(t.config)}</p>
-        </div>
-
-        <div className="flex items-center justify-center gap-5 py-1">
-          <RoundBtn aria="Restar 10 segundos" onClick={() => patch(t.id, (x, n) => nudgeTimer(x, n, -10_000))}>−10</RoundBtn>
-          <button type="button" aria-label={t.resumedAt === null ? "Largar" : "Pausar"} onClick={() => toggleRun(t)} className="grid size-[120px] place-items-center rounded-full bg-white text-[#07080B]">
-            {t.resumedAt !== null && status !== "finished" ? (
-              <svg width="44" height="44" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="5" width="4" height="14" rx="1" /><rect x="14" y="5" width="4" height="14" rx="1" /></svg>
-            ) : (
-              <svg width="44" height="44" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.5v15l12-7.5z" /></svg>
-            )}
-          </button>
-          <RoundBtn aria="Sumar 10 segundos" onClick={() => patch(t.id, (x, n) => nudgeTimer(x, n, 10_000))}>+10</RoundBtn>
-        </div>
-
-        <div className="grid grid-cols-2 gap-2">
-          <Action onClick={() => patch(t.id, (x) => resetTimer(x))}>REINICIAR</Action>
-          <Action onClick={() => patch(t.id, (x, n) => skipPhase(x, n))}>SALTAR TRAMO</Action>
-        </div>
-        <label className="flex min-h-14 items-center justify-between rounded-2xl border border-line bg-panel px-4 text-[15px] font-semibold">
-          Sonido de este timer
-          <input type="checkbox" checked={!t.muted} onChange={() => patch(t.id, (x) => ({ ...x, muted: !x.muted }))} className="size-[22px]" style={{ accentColor: t.color }} />
-        </label>
-        <label className="flex min-h-14 items-center justify-between rounded-2xl border border-line bg-panel px-4 text-[15px] font-semibold">
-          Visible en la tele
-          <input type="checkbox" checked={t.onTv} onChange={() => patch(t.id, (x) => ({ ...x, onTv: !x.onTv }))} className="size-[22px]" style={{ accentColor: t.color }} />
-        </label>
-        <div className="flex-1" />
-        <button
-          type="button"
-          onClick={() => {
-            patch(t.id, (x) => ({ ...resetTimer(x), onTv: false }));
-            setScreen({ name: "home" });
-          }}
-          className={`${cond} h-14 rounded-2xl border-2 text-[19px] font-black tracking-[2px]`}
-          style={{ borderColor: t.color, color: t.color }}
-        >
-          TERMINAR TIMER
-        </button>
-      </Shell>
     );
   }
 
@@ -557,7 +508,6 @@ export default function ControlApp() {
                       <IconBtn aria={`Eliminar ${t.name}`} d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3" onClick={() => setConfirm(t.id)} />
                       {status !== "finished" && <IconBtn aria={`Volver ${t.name} a cero`} d="M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5" onClick={() => patch(t.id, (x) => resetTimer(x))} />}
                       <IconBtn aria={`Editar ${t.name}`} d="M4 20h4L19 9l-4-4L4 16v4z" onClick={() => setScreen({ name: "edit", id: t.id })} />
-                      <IconBtn aria={`Abrir ${t.name}`} d="M9 6l6 6-6 6" onClick={() => setScreen({ name: "live", id: t.id })} />
                       <button type="button" aria-label={status === "finished" ? `Repetir ${t.name}` : `${t.resumedAt === null ? "Largar" : "Pausar"} ${t.name}`} onClick={() => toggleRun(t)} className="grid size-11 place-items-center rounded-xl text-[#07080B]" style={{ background: t.color }}>
                         {status === "finished" ? (
                           <Icon d="M21 12a9 9 0 1 1-3-6.7L21 8M21 3v5h-5" size={22} />
@@ -576,62 +526,75 @@ export default function ControlApp() {
         })}
 
         {state.timers.length < MAX_TIMERS && (
-          <button type="button" onClick={() => setScreen({ name: "edit", id: null })} className={`${cond} flex h-14 items-center justify-center gap-2.5 rounded-2xl border-2 border-dashed border-[#2E323C] text-[19px] font-extrabold tracking-[2px]`}>
-            <Icon d="M12 5v14M5 12h14" size={20} />
+          <button type="button" onClick={() => setScreen({ name: "edit", id: null })} className={`${cond} flex h-14 items-center justify-center gap-2.5 rounded-2xl bg-volt text-[19px] font-extrabold tracking-[2px] text-[#07080B]`}>
+            <Icon d="M12 5v14M5 12h14" size={22} />
             NUEVO TIMER
           </button>
         )}
       </section>
 
-      <button type="button" onClick={() => setView("plani")} className={`${cond} h-14 rounded-2xl border border-line bg-panel text-[19px] font-extrabold tracking-[2px]`}>
-        VOLVER A LA PLANI
-      </button>
-
-      <details className="rounded-2xl border border-line bg-panel">
-        <summary className={`${cond} flex min-h-14 cursor-pointer items-center px-4 text-[17px] font-extrabold tracking-[2px]`}>MÁS OPCIONES</summary>
+      <details className="group rounded-2xl border border-line bg-panel">
+        <summary className={`${cond} flex min-h-14 cursor-pointer list-none items-center justify-between px-4 text-[17px] font-extrabold tracking-[2px] [&::-webkit-details-marker]:hidden`}>
+          MÁS OPCIONES
+          <span className="transition-transform group-open:rotate-180">
+            <Icon d="M6 9l6 6 6-6" />
+          </span>
+        </summary>
         <div className="flex flex-col gap-3 px-4 pb-4">
           <div className="flex flex-col gap-1.5">
-            <label className="flex min-h-11 items-center justify-between gap-3 text-[15px] font-semibold">
-              Sonido de los timers en este celular
-              <input
-                type="checkbox"
-                checked={sound}
-                onChange={(e) => {
-                  setSound(e.target.checked);
-                  saveLocal(SOUND_KEY, e.target.checked);
+            <span className="text-[15px] font-semibold">Dónde suenan los beeps</span>
+            <div role="group" aria-label="Dónde suenan los beeps" className="flex gap-1 rounded-full border border-line p-1">
+              {([true, false] as const).map((onTv) => (
+                <button
+                  key={String(onTv)}
+                  type="button"
+                  aria-pressed={tvSound === onTv}
+                  onClick={() => {
+                    commit((st) => ({ ...st, tvSound: onTv }));
+                    if (!onTv) unlockAudio();
+                  }}
+                  className={`h-10 flex-1 rounded-full text-sm font-bold ${tvSound === onTv ? "bg-white text-[#07080B]" : "text-muted"}`}
+                >
+                  {onTv ? "EN LA TELE" : "EN ESTE CELULAR"}
+                </button>
+              ))}
+            </div>
+            {tvSound ? (
+              <p className="text-[13px] text-muted">Los beeps salen por la tele y el celular no suena: puede estar bloqueado o con música. Si la tele avisa que el sonido está apagado, tocá OK en su control remoto.</p>
+            ) : (
+              <p className="text-[13px] text-muted">Los beeps salen por este celular y la tele no suena. Mientras corre un timer la pantalla queda prendida: si bloqueás el celular o salís de esta pantalla, los beeps no suenan.</p>
+            )}
+          </div>
+          {!tvSound && (
+            <>
+              <button
+                type="button"
+                onClick={() => {
                   unlockAudio();
+                  setTimeout(() => beep(), 150);
                 }}
-                className="size-[22px] accent-[#D4FF00]"
-              />
-            </label>
-            <p className="text-[13px] text-muted">Beeps en los últimos 3 s de cada tramo y al terminar. La tele no suena, así no se pisa con tu música. Dejá esta pantalla abierta.</p>
-            <button
-              type="button"
-              onClick={() => {
-                unlockAudio();
-                setTimeout(() => beep("go"), 150);
-              }}
-              className={`${cond} h-11 self-start rounded-xl bg-line px-4 text-[15px] font-extrabold tracking-[2px]`}
-            >
-              PROBAR SONIDO
-            </button>
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <label className="flex min-h-11 items-center justify-between gap-3 text-[15px] font-semibold">
-              Sonido con el celular bloqueado (prueba)
-              <input
-                type="checkbox"
-                checked={locked}
-                onChange={(e) => {
-                  setLocked(e.target.checked);
-                  saveLocal(LOCKED_KEY, e.target.checked);
-                  if (e.target.checked) unlockTrack();
-                }}
-                className="size-[22px] accent-[#D4FF00]"
-              />
-            </label>
-            <p className="text-[13px] text-muted">Reproduce los beeps como audio, así siguen sonando con la pantalla apagada. Puede cortar la música que esté sonando en el celular.</p>
-          </div>
+                className={`${cond} h-11 self-start rounded-xl bg-line px-4 text-[15px] font-extrabold tracking-[2px]`}
+              >
+                PROBAR SONIDO
+              </button>
+              <div className="flex flex-col gap-1.5">
+                <label className="flex min-h-11 items-center justify-between gap-3 text-[15px] font-semibold">
+                  Sonido con el celular bloqueado (prueba)
+                  <input
+                    type="checkbox"
+                    checked={locked}
+                    onChange={(e) => {
+                      setLocked(e.target.checked);
+                      saveLocal(LOCKED_KEY, e.target.checked);
+                      if (e.target.checked) unlockTrack();
+                    }}
+                    className="size-[22px] accent-[#D4FF00]"
+                  />
+                </label>
+                <p className="text-[13px] text-muted">Reproduce los beeps como audio, así siguen sonando con la pantalla apagada. Puede cortar la música que esté sonando en el celular.</p>
+              </div>
+            </>
+          )}
           <LinkField
             id="ctl-link"
             title="Link de control"
@@ -797,20 +760,6 @@ function IconBtn({ aria, d, onClick }: { aria: string; d: string; onClick: () =>
   return (
     <button type="button" aria-label={aria} onClick={onClick} className="grid size-11 place-items-center rounded-xl bg-line">
       <Icon d={d} size={18} />
-    </button>
-  );
-}
-function RoundBtn({ aria, onClick, children }: { aria: string; onClick: () => void; children: ReactNode }) {
-  return (
-    <button type="button" aria-label={aria} onClick={onClick} className={`${cond} size-16 rounded-full border border-line bg-panel text-xl font-extrabold`}>
-      {children}
-    </button>
-  );
-}
-function Action({ onClick, children }: { onClick: () => void; children: ReactNode }) {
-  return (
-    <button type="button" onClick={onClick} className={`${cond} h-14 rounded-2xl border border-line bg-panel text-[17px] font-extrabold tracking-[2px]`}>
-      {children}
     </button>
   );
 }

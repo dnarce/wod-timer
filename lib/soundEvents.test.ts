@@ -3,36 +3,40 @@ import assert from "node:assert/strict";
 import { soundEvents } from "./soundEvents.ts";
 import { newTimer, startTimer } from "./state.ts";
 
-test("amrap 2 bloques de 10 s con descanso de 10 s: 3 ticks y largada al final de cada tramo, y el final", () => {
-  let t = newTimer(0);
-  t = { ...t, precount: false, config: { kind: "amrap", blockSec: 10, blocks: 2, restSec: 10 } };
-  t = startTimer(t, 0);
-  const ev = soundEvents([t], 0);
-  const sec = (k: string) => ev.filter((e) => e.kind === k).map((e) => e.atMs / 1000);
-  assert.deepEqual(sec("tick"), [7, 8, 9, 17, 18, 19, 27, 28, 29]);
-  assert.deepEqual(sec("go"), [10, 20]);
-  assert.deepEqual(sec("end"), [30]);
+const run = (config: object, precount: boolean, at = 0, now = 0) =>
+  soundEvents([startTimer({ ...newTimer(0), precount, config: config as never }, at)], now);
+
+test("amrap 2 bloques de 10 s con descanso de 10 s: el sonido arranca 3 s antes de cada cambio y del final", () => {
+  const ev = run({ kind: "amrap", blockSec: 10, blocks: 2, restSec: 10 }, false);
+  assert.deepEqual(ev.map((e) => e.atMs / 1000), [7, 17, 27]);
+  assert.ok(ev.every((e) => e.skipSec === 0));
 });
 
-test("tramo de 5 s: la cuenta previa y el tramo suenan 3 ticks cada uno", () => {
-  let t = newTimer(0);
-  t = { ...t, precount: true, config: { kind: "regresiva", totalSec: 5 } };
-  t = startTimer(t, 0);
-  const ev = soundEvents([t], 0);
-  assert.deepEqual(ev.filter((e) => e.kind === "tick").map((e) => e.atMs / 1000), [7, 8, 9, 12, 13, 14]);
+test("con precuenta de 10 s suena antes de largar y antes de cada tramo", () => {
+  const ev = run({ kind: "regresiva", totalSec: 5 }, true);
+  assert.deepEqual(ev.map((e) => [e.atMs / 1000, e.skipSec]), [[7, 0], [12, 0]]);
 });
 
-test("cada timer suena con su altura: el 2.º es más agudo que el 1.º", () => {
-  const mk = (i: number) => startTimer({ ...newTimer(i), muted: false, precount: false, config: { kind: "regresiva" as const, totalSec: 10 } }, 0);
-  const ev = soundEvents([mk(0), mk(1)], 0);
-  const rates = new Set(ev.map((e) => e.rate));
-  assert.deepEqual([...rates].sort(), [1, 1.26]);
+test("un tramo de menos de 3 s entra al sonido ya empezado, para que el beep largo caiga en el cambio", () => {
+  const ev = run({ kind: "regresiva", totalSec: 2 }, false);
+  assert.deepEqual(ev.map((e) => [e.atMs / 1000, e.skipSec]), [[0, 1]]);
+});
+
+test("si ya se está dentro de la cuenta, el sonido entra por donde corresponde", () => {
+  // Largó en 0; ahora son 8,5 s de un tramo de 10 s: faltan 1,5 s, o sea 1,5 s adentro del sonido.
+  const ev = run({ kind: "regresiva", totalSec: 10 }, false, 0, 8500);
+  assert.deepEqual(ev.map((e) => [e.atMs, e.skipSec]), [[0, 1.5]]);
+});
+
+test("cronómetro hacia arriba: sólo suena el beep largo al final", () => {
+  const ev = run({ kind: "fortime", capSec: 60 }, false);
+  assert.deepEqual(ev.map((e) => [e.atMs / 1000, e.skipSec]), [[60, 3]]);
 });
 
 test("un timer silenciado no genera sonidos y los demás siguen", () => {
   const mk = (i: number, muted: boolean) => startTimer({ ...newTimer(i), muted, precount: false, config: { kind: "regresiva" as const, totalSec: 10 } }, 0);
-  const ev = soundEvents([mk(0, true), mk(1, false)], 0);
-  assert.ok(ev.length > 0 && ev.every((e) => e.rate === 1.26));
+  assert.equal(soundEvents([mk(0, true)], 0).length, 0);
+  assert.equal(soundEvents([mk(0, true), mk(1, false)], 0).length, 1);
 });
 
 test("de entrada sólo suena el primer timer", () => {
