@@ -18,7 +18,7 @@ El celular es la fuente de verdad: publica el estado completo (timers, vista, te
 Los tiempos son marcas de la hora del servidor, no ticks: la tele calcula el reloj sola y sigue andando aunque se corte la conexión.
 Celular y tele se sincronizan con `/api/sync`, así que no importa si sus relojes difieren.
 
-**Sonido:** la tele no emite sonido. Los beeps (últimos 3 s de cada tramo, arranque y fin) suenan en el celular del profe, junto a su música; se activan o apagan en *Más opciones*.
+**Sonido:** los beeps suenan en la tele por defecto. En el inicio de la app, seleccioná **Probar sonido** con el control remoto para escuchar la cuenta y luego elegí la pantalla. Si abrís el link directo de la pantalla, apretá OK en el control remoto para habilitar el audio. En el celular, *Más opciones → Dónde suenan los beeps* permite cambiar la salida a **En este celular**.
 
 La llave del QR es un HMAC del id de sesión: el servidor no guarda nada. Todas las conexiones (tele y celular) la
 presentan para pedir permisos a Ably, y la tele sólo puede escuchar.

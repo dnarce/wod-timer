@@ -103,20 +103,21 @@ export default function TvApp({ screen }: { screen: string }) {
     return () => clearTimeout(t);
   }, [showQr]);
 
-  // 4) Tocar la pantalla (o una tecla del control remoto) muestra u oculta el QR de la esquina, en cualquier modo:
-  //    así se puede volver a vincular un celular aunque haya timers a pantalla completa.
-  //    El mismo toque habilita el sonido: los navegadores no dejan sonar hasta que alguien toca algo.
+  // 4) Un clic o una tecla muestra u oculta el QR y habilita el audio si se entró por el link directo.
   useEffect(() => {
-    unlockAudio(); // en teles en modo kiosco alcanza con esto; en el resto hace falta el toque
-    const on = () => {
-      unlockAudio();
+    void unlockAudio(); // en modo kiosco puede activarse sin intervención
+    const toggleQr = () => {
+      if (!audioReady()) void unlockAudio();
       setShowQr((v) => !v);
     };
-    window.addEventListener("pointerdown", on);
-    window.addEventListener("keydown", on);
+    const onKey = (event: KeyboardEvent) => {
+      if (!event.repeat && event.key !== "Tab") toggleQr();
+    };
+    window.addEventListener("click", toggleQr);
+    window.addEventListener("keydown", onKey);
     return () => {
-      window.removeEventListener("pointerdown", on);
-      window.removeEventListener("keydown", on);
+      window.removeEventListener("click", toggleQr);
+      window.removeEventListener("keydown", onKey);
     };
   }, []);
 
@@ -258,19 +259,11 @@ export default function TvApp({ screen }: { screen: string }) {
     </div>
   );
 
-  // El sonido está pedido pero el navegador todavía no lo habilitó: falta un toque en la tele.
-  const soundHint = paired && tvSound && !audioReady() && (
-    <div style={{ position: "absolute", zIndex: 6, left: 24, bottom: 24, padding: "14px 22px", borderRadius: 18, background: "#D4FF00", color: "#07080B", fontFamily: COND, fontWeight: 800, fontSize: 28, letterSpacing: 1 }}>
-      SONIDO APAGADO · tocá OK en el control remoto de la tele para activarlo
-    </div>
-  );
-
   return (
     <Stage theme={paired ? state.theme : "noche"}>
       {planiFrame}
       {body}
       {cornerQr}
-      {soundHint}
     </Stage>
   );
 }

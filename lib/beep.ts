@@ -68,11 +68,15 @@ export function unlockAudio() {
     }
     stale = false;
     const AC = window.AudioContext ?? (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-    ctx ??= new AC();
-    void ctx.resume();
+    if (!AC) return Promise.resolve(false);
+    const c = (ctx ??= new AC());
+    const resumed = c.resume();
     preload();
     syncKeepAlive();
-  } catch {}
+    return Promise.resolve(resumed).then(() => ctx === c && audioReady(), () => false);
+  } catch {
+    return Promise.resolve(false);
+  }
 }
 
 // Al bloquear la pantalla iOS interrumpe el audio de la página y al volver no lo retoma solo.
@@ -129,7 +133,7 @@ export function keepAudioAlive(on: boolean) {
   keepAliveWanted = on;
   try {
     syncKeepAlive();
-    if (on && ctx && ctx.state !== "running") void ctx.resume();
+    if (on && ctx && ctx.state !== "running") void Promise.resolve(ctx.resume()).catch(() => {});
   } catch {}
 }
 
@@ -187,18 +191,20 @@ function play(skipSec: number, owner: string) {
   }
   // Sin el sonido grabado: beeps de oscilador en los mismos segundos (0, 1, 2 cortos y 3 largo).
   for (const [at, dur] of [[0, 0.14], [1, 0.14], [2, 0.14], [3, 0.9]] as const) {
-    if (at < skipSec) continue;
-    const t0 = ctx.currentTime + (at - skipSec);
+    const remaining = at + dur - Math.max(at, skipSec);
+    if (remaining <= 0) continue;
+    const t0 = ctx.currentTime + Math.max(0, at - skipSec);
     const o = ctx.createOscillator();
     const g = ctx.createGain();
     o.type = "square";
     o.frequency.value = at === 3 ? 1320 : 880;
     g.gain.setValueAtTime(0.0001, t0);
-    g.gain.exponentialRampToValueAtTime(0.35, t0 + 0.01);
-    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
-    o.connect(g).connect(ctx.destination);
+    g.gain.exponentialRampToValueAtTime(0.35, t0 + Math.min(0.01, remaining / 2));
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + remaining);
+    o.connect(g);
+    g.connect(ctx.destination);
     o.start(t0);
-    o.stop(t0 + dur + 0.05);
+    o.stop(t0 + remaining + 0.05);
     track(owner, o);
   }
 }

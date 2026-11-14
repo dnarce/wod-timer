@@ -220,7 +220,6 @@ export default function ControlApp() {
     window.addEventListener("pointerdown", on);
     return () => window.removeEventListener("pointerdown", on);
   }, []);
-  // Los beeps suenan acá (junto a la música del profe) y, si se prende "Sonido en la tele", también en la tele.
   // Los beeps suenan en la tele (por defecto) o en este celular, nunca en los dos.
   const tvSound = state.tvSound !== false;
   const soundOn = !tvSound && !!creds && controlOf(state, deviceId) !== "other";
@@ -595,7 +594,7 @@ export default function ControlApp() {
               ))}
             </div>
             {tvSound ? (
-              <p className="text-[13px] text-muted">Los beeps salen por la tele y el celular no suena: puede estar bloqueado o con música. Si la tele avisa que el sonido está apagado, tocá OK en su control remoto.</p>
+              <p className="text-[13px] text-muted">Los beeps salen por la tele. Para probarlos, elegí «Probar sonido» en el inicio de la app desde la tele.</p>
             ) : (
               <p className="text-[13px] text-muted">Los beeps salen por este celular y la tele no suena. Mientras corre un timer la pantalla queda prendida: si bloqueás el celular o salís de esta pantalla, los beeps no suenan.</p>
             )}

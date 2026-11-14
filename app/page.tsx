@@ -1,5 +1,7 @@
 import { Suspense } from "react";
+import Link from "next/link";
 import { connection } from "next/server";
+import { SoundTestButton } from "@/components/SoundTestButton";
 import { Brand } from "@/components/TvApp";
 import { parseScreens, screenLabel } from "@/lib/screens";
 
@@ -18,9 +20,9 @@ async function Screens() {
       <ul className="m-0 mt-3 flex list-none flex-col gap-2 p-0">
         {screens.map((s) => (
           <li key={s}>
-            <a href={`/${s}`} className="flex min-h-12 items-center rounded-xl border border-white/15 bg-white/5 px-4 py-3 text-lg font-bold text-white capitalize no-underline">
+            <Link href={`/${s}`} className="flex min-h-12 items-center rounded-xl border border-white/15 bg-white/5 px-4 py-3 text-lg font-bold text-white capitalize no-underline">
               {screenLabel(s)}
-            </a>
+            </Link>
           </li>
         ))}
       </ul>
@@ -32,9 +34,12 @@ export default function Home() {
   return (
     <main className="flex min-h-dvh flex-col items-center justify-center gap-10 bg-[#07080B] px-4 py-10 text-white">
       <Brand size={44} />
-      <Suspense>
-        <Screens />
-      </Suspense>
+      <div className="flex w-full max-w-sm flex-col gap-3">
+        <Suspense>
+          <Screens />
+        </Suspense>
+        <SoundTestButton />
+      </div>
     </main>
   );
 }
